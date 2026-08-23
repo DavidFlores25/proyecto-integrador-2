@@ -55,7 +55,7 @@ const observer = new IntersectionObserver((entries) => {
       spans.forEach((span, i) => {
         setTimeout(() => {
           span.classList.add('visible');
-        }, i * 450); // 150ms de diferencia entre cada bloque
+        }, i * 730); // 150ms de diferencia entre cada bloque
       });
       observer.unobserve(entry.target);
     }
