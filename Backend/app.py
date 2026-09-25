@@ -28,6 +28,12 @@ def ver_estado(nombre):
     resultado = db.obtener_reservas_por_nombre(nombre)
     return jsonify(resultado)
 
+
+@app.route("/reservas-pendientes", methods=["GET"])
+def ver_pendientes():
+    resultado = db.obtener_reservas_pendientes()
+    return jsonify(resultado)
+
 @app.route("/mesas-disponibles", methods=["GET"])
 def mesas_disponibles():
     dia = request.args.get("dia")

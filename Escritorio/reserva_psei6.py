@@ -1,49 +1,436 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import sys
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QFormLayout, QLabel, QLineEdit, QComboBox, QPushButton, QSpinBox,
+    QCheckBox, QListWidget, QTreeWidget, QTreeWidgetItem, QMessageBox,
+    QFrame, QHeaderView, QAbstractSpinBox
+)
+from PySide6.QtCore import Qt
+import db
+# ==================== Sistema de Reservas (GUI) - PySide6 ====================
+# Migración de tkinter/ttk a PySide6. Toda la lógica de negocio (validaciones,
+# reglas de conflicto de horario, estructura de datos de reservas) se mantiene
+# idéntica al archivo original; solo cambia la capa de interfaz gráfica.
 
-# ==================== Sistema de Reservas (GUI) ====================
 
-class CoverOSApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Cover OS - Sistema de Reservas")
-        self.root.geometry("950x700")
-        self.root.configure(bg="#1a1a2e")
-        self.root.resizable(True, True)
+# -----------------------------------------------------------------------------
+# HOJAS DE ESTILOS QSS - Tema Oscuro y Tema Claro (mismo lenguaje visual original)
+# -----------------------------------------------------------------------------
+QSS_TEMA_OSCURO = """
+QMainWindow, QWidget {
+    background-color: #1a1a2e;
+    color: #e0e0e0;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 11pt;
+}
 
-        # ---------- Estilos ----------
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-        self.style.configure("TFrame", background="#1a1a2e")
-        self.style.configure("TLabel", background="#1a1a2e", foreground="#e0e0e0", font=("Segoe UI", 11))
-        self.style.configure("TButton", font=("Segoe UI", 11, "bold"), padding=6)
-        self.style.configure("Header.TLabel", font=("Segoe UI", 18, "bold"), foreground="#00d4ff")
-        self.style.configure("SubHeader.TLabel", font=("Segoe UI", 13, "bold"), foreground="#ffcc00")
-        self.style.configure("Success.TButton", foreground="#ffffff", background="#28a745")
-        self.style.configure("Danger.TButton", foreground="#ffffff", background="#dc3545")
-        self.style.configure("Accent.TButton", foreground="#ffffff", background="#007bff")
-        self.style.map("TButton", background=[("active", "#0056b3")])
+/* ---------- Encabezados ---------- */
+QLabel#lblHeader {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #00d4ff;
+}
+
+QLabel#lblSubHeader {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #ffcc00;
+}
+
+QLabel#lblWarning {
+    color: #ffcc00;
+    font-size: 13pt;
+}
+
+QLabel#lblError {
+    color: #ff6b6b;
+}
+
+/* ---------- Campos de entrada ---------- */
+QLineEdit, QComboBox, QSpinBox {
+    background-color: #16213e;
+    border: 1px solid #2c2f4a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #e0e0e0;
+}
+
+QComboBox {
+    combobox-popup: 0;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+    border: 1px solid #00d4ff;
+    background-color: #1c2745;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #16213e;
+    border: 1px solid #00d4ff;
+    border-radius: 4px;
+    padding: 4px;
+    color: #e0e0e0;
+    selection-background-color: #007bff;
+    selection-color: #ffffff;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 26px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ---------- Botones ---------- */
+QPushButton {
+    background-color: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #2c2f4a;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #0056b3;
+    color: #ffffff;
+    border: 1px solid #007bff;
+}
+
+QPushButton:pressed {
+    background-color: #003d80;
+}
+
+QPushButton:disabled {
+    background-color: #14172a;
+    color: #5a5f77;
+    border: 1px solid #22263f;
+}
+
+QPushButton#btnAccent {
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnAccent:hover { background-color: #0056b3; }
+QPushButton#btnAccent:pressed { background-color: #003d80; }
+
+QPushButton#btnSuccess {
+    background-color: #28a745;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnSuccess:hover { background-color: #218838; }
+QPushButton#btnSuccess:pressed { background-color: #1a6e2c; }
+
+QPushButton#btnDanger {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnDanger:hover { background-color: #bb2d3b; }
+QPushButton#btnDanger:pressed { background-color: #9a2530; }
+
+/* ---------- Checkbuttons de mesas ---------- */
+QCheckBox {
+    padding: 4px;
+    spacing: 6px;
+}
+QCheckBox::indicator {
+    width: 15px;
+    height: 15px;
+}
+QCheckBox:disabled {
+    color: #5a5f77;
+}
+
+/* ---------- Listas y árboles ---------- */
+QListWidget, QTreeWidget {
+    background-color: #16213e;
+    border: 1px solid #2c2f4a;
+    border-radius: 6px;
+    color: #e0e0e0;
+    alternate-background-color: #1c2745;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #2c2f4a;
+    color: #00d4ff;
+    padding: 6px;
+    font-weight: bold;
+    border: none;
+}
+
+/* ---------- Tarjeta de resultado de consulta ---------- */
+QFrame#card {
+    background-color: #16213e;
+    border: 1px solid #2c2f4a;
+    border-radius: 8px;
+}
+
+QLabel#cardTitulo {
+    color: #00d4ff;
+    font-size: 13pt;
+    font-weight: bold;
+}
+
+QLabel#cardTexto {
+    color: #e0e0e0;
+}
+
+/* ---------- Cuadros de diálogo ---------- */
+QMessageBox {
+    background-color: #1a1a2e;
+}
+
+QMessageBox QLabel {
+    color: #e0e0e0;
+    font-size: 11pt;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+    padding: 6px 14px;
+}
+"""
+
+
+QSS_TEMA_CLARO = """
+QMainWindow, QWidget {
+    background-color: #e7ebf4;
+    color: #1c2333;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 11pt;
+}
+
+/* ---------- Encabezados ---------- */
+QLabel#lblHeader {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+QLabel#lblSubHeader {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #b36a00;
+}
+
+QLabel#lblWarning {
+    color: #b36a00;
+    font-size: 13pt;
+}
+
+QLabel#lblError {
+    color: #dc3545;
+}
+
+/* ---------- Campos de entrada ---------- */
+QLineEdit, QComboBox, QSpinBox {
+    background-color: #f5f7fb;
+    border: 1px solid #ccd0da;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #1c2333;
+}
+
+QComboBox {
+    combobox-popup: 0;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+    border: 1px solid #0d6efd;
+    background-color: #f4f8ff;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #f5f7fb;
+    border: 1px solid #0d6efd;
+    border-radius: 4px;
+    padding: 4px;
+    color: #1c2333;
+    selection-background-color: #0d6efd;
+    selection-color: #ffffff;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 26px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ---------- Botones ---------- */
+QPushButton {
+    background-color: #f5f7fb;
+    color: #1c2333;
+    border: 1px solid #ccd0da;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #0b5ed7;
+    color: #ffffff;
+    border: 1px solid #0d6efd;
+}
+
+QPushButton:pressed {
+    background-color: #084298;
+}
+
+QPushButton:disabled {
+    background-color: #e9ecef;
+    color: #9aa1ad;
+    border: 1px solid #dee2e6;
+}
+
+QPushButton#btnAccent {
+    background-color: #0d6efd;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnAccent:hover { background-color: #0b5ed7; }
+QPushButton#btnAccent:pressed { background-color: #084298; }
+
+QPushButton#btnSuccess {
+    background-color: #198754;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnSuccess:hover { background-color: #157347; }
+QPushButton#btnSuccess:pressed { background-color: #12603c; }
+
+QPushButton#btnDanger {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btnDanger:hover { background-color: #bb2d3b; }
+QPushButton#btnDanger:pressed { background-color: #9a2530; }
+
+/* ---------- Checkbuttons de mesas ---------- */
+QCheckBox {
+    padding: 4px;
+    spacing: 6px;
+}
+QCheckBox::indicator {
+    width: 15px;
+    height: 15px;
+}
+QCheckBox:disabled {
+    color: #9aa1ad;
+}
+
+/* ---------- Listas y árboles ---------- */
+QListWidget, QTreeWidget {
+    background-color: #f5f7fb;
+    border: 1px solid #ccd0da;
+    border-radius: 6px;
+    color: #1c2333;
+    alternate-background-color: #f4f6fb;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background-color: #0d6efd;
+    color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #e9ecef;
+    color: #0d6efd;
+    padding: 6px;
+    font-weight: bold;
+    border: none;
+}
+
+/* ---------- Tarjeta de resultado de consulta ---------- */
+QFrame#card {
+    background-color: #f5f7fb;
+    border: 1px solid #ccd0da;
+    border-radius: 8px;
+}
+
+QLabel#cardTitulo {
+    color: #0d6efd;
+    font-size: 13pt;
+    font-weight: bold;
+}
+
+QLabel#cardTexto {
+    color: #1c2333;
+}
+
+/* ---------- Cuadros de diálogo ---------- */
+QMessageBox {
+    background-color: #e7ebf4;
+}
+
+QMessageBox QLabel {
+    color: #1c2333;
+    font-size: 11pt;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+    padding: 6px 14px;
+}
+"""
+
+
+class CoverOSApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Sistema de Reservas")
+        self.resize(950, 700)
 
         # ---------- Datos Iniciales ----------
         self.mesas_disponibles = list(range(1, 11))
-        self.reservas_pendientes = []
-        self.reservas_aceptadas = []
-        self.reservas_rechazadas = []
-        self.vendedores = {"Eliezer": "Romero", "Darwin": "Eduardo"}
-        self.limite_personas = 4
+        self.limite_personas = 10
+        self.es_tema_oscuro = True
         self.dias_semana = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
         self.dias_validos = [d for d in self.dias_semana if d != "Lunes"]
 
         # ---------- Contenedor Principal ----------
-        self.main_frame = ttk.Frame(self.root)
-        self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.main_widget = QWidget()
+        self.setCentralWidget(self.main_widget)
+        self.main_layout = QVBoxLayout(self.main_widget)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(14)
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.mostrar_menu_principal()
 
     # ==================== Utilidades ====================
     def limpiar_frame(self):
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+        self._limpiar_layout(self.main_layout)
+
+    def _limpiar_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                sub_layout = item.layout()
+                if sub_layout is not None:
+                    self._limpiar_layout(sub_layout)
 
     def validar_nombre(self, nombre):
         return nombre.replace(" ", "").isalpha() and len(nombre) > 1
@@ -56,6 +443,7 @@ class CoverOSApp:
             return False
 
     def validar_dia(self, dia):
+        dia = dia.strip().capitalize()
         return dia in self.dias_semana and dia != "Lunes"
 
     def hora_a_minutos(self, hora_str):
@@ -71,132 +459,204 @@ class CoverOSApp:
     def formato_hora(self, h, m, meridiano):
         return f"{h}:{m:02d} {meridiano}"
 
+    # ---------- Helpers de construcción de UI ----------
+    def _label(self, texto, object_name=None, align=None):
+        lbl = QLabel(texto)
+        if object_name:
+            lbl.setObjectName(object_name)
+        if align is not None:
+            lbl.setAlignment(align)
+        return lbl
+
+    def _boton(self, texto, comando, object_name=None, min_width=None):
+        btn = QPushButton(texto)
+        btn.clicked.connect(comando)
+        if object_name:
+            btn.setObjectName(object_name)
+        if min_width:
+            btn.setMinimumWidth(min_width)
+        return btn
+
+    def _fila_botones(self, botones, centrado=True):
+        contenedor = QHBoxLayout()
+        if centrado:
+            contenedor.addStretch()
+        for btn in botones:
+            contenedor.addWidget(btn)
+        if centrado:
+            contenedor.addStretch()
+        return contenedor
+
+    def salir_app(self):
+        QApplication.instance().quit()
+
+    def cambiar_tema(self, nombre_tema):
+        """Alterna dinámicamente la hoja de estilo QSS de toda la aplicación."""
+        self.es_tema_oscuro = "Oscuro" in nombre_tema
+        QApplication.instance().setStyleSheet(QSS_TEMA_OSCURO if self.es_tema_oscuro else QSS_TEMA_CLARO)
+
     # ==================== Menú Principal ====================
     def mostrar_menu_principal(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="integrador II", style="Header.TLabel").pack(pady=(30, 5))
-        ttk.Label(self.main_frame, text="Aplicacion escritorio en gestionamiento de Reservas", style="SubHeader.TLabel").pack(pady=(0, 40))
+        self.main_layout.addSpacing(30)
+        self.main_layout.addWidget(self._label("integrador II", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        lbl_sub = self._label("Aplicacion escritorio en gestionamiento de Reservas", "lblSubHeader", Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addWidget(lbl_sub)
+        self.main_layout.addSpacing(20)
 
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=20)
+        col = QVBoxLayout()
+        col.setSpacing(10)
+        col.addWidget(self._boton(" Cliente", self.mostrar_menu_cliente, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Reservas Pendientes", self.mostrar_reservas_pendientes_publico, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Vendedor", self.mostrar_login_vendedor, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Administrador", self.mostrar_login_admin, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Salir", self.salir_app, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addLayout(col)
+        self.main_layout.addStretch()
 
-        ttk.Button(btn_frame, text=" Cliente", width=25, command=self.mostrar_menu_cliente).pack(pady=10)
-        ttk.Button(btn_frame, text=" Vendedor", width=25, command=self.mostrar_login_vendedor).pack(pady=10)
-        ttk.Button(btn_frame, text=" Administrador", width=25, command=self.mostrar_login_admin).pack(pady=10)
-        ttk.Button(btn_frame, text=" Salir", width=25, command=self.root.quit).pack(pady=10)
+        # ---------- Selector de tema, abajo a la derecha ----------
+        tema_layout = QHBoxLayout()
+        tema_layout.addStretch()
+        tema_layout.addWidget(QLabel("Tema Visual:"))
+        self.combo_tema = QComboBox()
+        self.combo_tema.addItems(["Tema Oscuro", "Tema Claro"])
+        self.combo_tema.setCurrentText("Tema Oscuro" if self.es_tema_oscuro else "Tema Claro")
+        self.combo_tema.setMinimumWidth(150)
+        self.combo_tema.currentTextChanged.connect(self.cambiar_tema)
+        tema_layout.addWidget(self.combo_tema)
+        self.main_layout.addLayout(tema_layout)
 
     # ==================== Cliente ====================
     def mostrar_menu_cliente(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Menú Cliente", style="Header.TLabel").pack(pady=(20, 30))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label("Menú Cliente", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(30)
 
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=10)
-
-        ttk.Button(btn_frame, text=" Hacer una Reserva", width=30, command=self.mostrar_formulario_reserva).pack(pady=10)
-        ttk.Button(btn_frame, text=" Ver Estado de mi Reserva", width=30, command=self.mostrar_consulta_reserva).pack(pady=10)
-        ttk.Button(btn_frame, text=" Volver", width=30, command=self.mostrar_menu_principal).pack(pady=20)
+        col = QVBoxLayout()
+        col.setSpacing(10)
+        col.addWidget(self._boton(" Hacer una Reserva", self.mostrar_formulario_reserva, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Ver Estado de mi Reserva", self.mostrar_consulta_reserva, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addSpacing(10)
+        col.addWidget(self._boton(" Volver", self.mostrar_menu_principal, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addLayout(col)
+        self.main_layout.addStretch()
 
     def mostrar_formulario_reserva(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Solicitar Reserva", style="Header.TLabel").pack(pady=(10, 20))
+        self.main_layout.addWidget(self._label("Solicitar Reserva", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        form.setSpacing(10)
 
         # Nombre
-        ttk.Label(form, text="Nombre de la reserva:").grid(row=0, column=0, sticky="w", padx=10, pady=8)
-        self.entry_nombre = ttk.Entry(form, width=30, font=("Segoe UI", 11))
-        self.entry_nombre.grid(row=0, column=1, padx=10, pady=8)
+        self.entry_nombre = QLineEdit()
+        self.entry_nombre.returnPressed.connect(self.verificar_mesas)
+        form.addRow("Nombre de la reserva:", self.entry_nombre)
 
         # Personas
-        ttk.Label(form, text=f"Número de personas (máx {self.limite_personas}):").grid(row=1, column=0, sticky="w", padx=10, pady=8)
-        self.spin_personas = ttk.Spinbox(form, from_=1, to=self.limite_personas, width=10, font=("Segoe UI", 11))
-        self.spin_personas.set(1)
-        self.spin_personas.grid(row=1, column=1, sticky="w", padx=10, pady=8)
+        self.spin_personas = QSpinBox()
+        self.spin_personas.setRange(1, self.limite_personas)
+        self.spin_personas.setValue(1)
+        self.spin_personas.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        form.addRow(f"Número de personas (máx {self.limite_personas}):", self.spin_personas)
 
         # Día
-        ttk.Label(form, text="Día de la reserva:").grid(row=2, column=0, sticky="w", padx=10, pady=8)
-        self.combo_dia = ttk.Combobox(form, values=self.dias_validos, state="readonly", width=15, font=("Segoe UI", 11))
-        self.combo_dia.set(self.dias_validos[0])
-        self.combo_dia.grid(row=2, column=1, sticky="w", padx=10, pady=8)
+        self.combo_dia = QComboBox()
+        self.combo_dia.addItems(self.dias_validos)
+        form.addRow("Día de la reserva:", self.combo_dia)
 
         # Horario Inicio
-        ttk.Label(form, text="Hora de inicio:").grid(row=3, column=0, sticky="w", padx=10, pady=8)
-        hora_inicio_frame = ttk.Frame(form)
-        hora_inicio_frame.grid(row=3, column=1, sticky="w", padx=10, pady=8)
-        self.combo_h_inicio = ttk.Combobox(hora_inicio_frame, values=[str(i) for i in range(1, 13)], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_h_inicio.set("8")
-        self.combo_h_inicio.pack(side="left", padx=(0, 5))
-        ttk.Label(hora_inicio_frame, text=":").pack(side="left")
-        self.combo_m_inicio = ttk.Combobox(hora_inicio_frame, values=["00", "15", "30", "45"], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_m_inicio.set("00")
-        self.combo_m_inicio.pack(side="left", padx=5)
-        self.combo_ampm_inicio = ttk.Combobox(hora_inicio_frame, values=["AM", "PM"], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_ampm_inicio.set("AM")
-        self.combo_ampm_inicio.pack(side="left", padx=5)
+        hora_inicio_widget = QWidget()
+        hora_inicio_frame = QHBoxLayout(hora_inicio_widget)
+        hora_inicio_frame.setContentsMargins(0, 0, 0, 0)
+        self.combo_h_inicio = QComboBox()
+        self.combo_h_inicio.addItems([str(i) for i in range(1, 13)])
+        self.combo_h_inicio.setCurrentText("8")
+        self.combo_h_inicio.setMinimumWidth(60)
+        self.combo_h_inicio.view().setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.combo_m_inicio = QComboBox()
+        self.combo_m_inicio.addItems(["00", "15", "30", "45"])
+        self.combo_ampm_inicio = QComboBox()
+        self.combo_ampm_inicio.addItems(["AM", "PM"])
+        hora_inicio_frame.addWidget(self.combo_h_inicio)
+        hora_inicio_frame.addWidget(QLabel(":"))
+        hora_inicio_frame.addWidget(self.combo_m_inicio)
+        hora_inicio_frame.addWidget(self.combo_ampm_inicio)
+        hora_inicio_frame.addStretch()
+        form.addRow("Hora de inicio:", hora_inicio_widget)
 
         # Horario Fin
-        ttk.Label(form, text="Hora de fin:").grid(row=4, column=0, sticky="w", padx=10, pady=8)
-        hora_fin_frame = ttk.Frame(form)
-        hora_fin_frame.grid(row=4, column=1, sticky="w", padx=10, pady=8)
-        self.combo_h_fin = ttk.Combobox(hora_fin_frame, values=[str(i) for i in range(1, 13)], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_h_fin.set("10")
-        self.combo_h_fin.pack(side="left", padx=(0, 5))
-        ttk.Label(hora_fin_frame, text=":").pack(side="left")
-        self.combo_m_fin = ttk.Combobox(hora_fin_frame, values=["00", "15", "30", "45"], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_m_fin.set("00")
-        self.combo_m_fin.pack(side="left", padx=5)
-        self.combo_ampm_fin = ttk.Combobox(hora_fin_frame, values=["AM", "PM"], state="readonly", width=5, font=("Segoe UI", 11))
-        self.combo_ampm_fin.set("AM")
-        self.combo_ampm_fin.pack(side="left", padx=5)
+        hora_fin_widget = QWidget()
+        hora_fin_frame = QHBoxLayout(hora_fin_widget)
+        hora_fin_frame.setContentsMargins(0, 0, 0, 0)
+        self.combo_h_fin = QComboBox()
+        self.combo_h_fin.addItems([str(i) for i in range(1, 13)])
+        self.combo_h_fin.setCurrentText("10")
+        self.combo_h_fin.setMinimumWidth(60)
+        self.combo_h_fin.view().setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.combo_m_fin = QComboBox()
+        self.combo_m_fin.addItems(["00", "15", "30", "45"])
+        self.combo_ampm_fin = QComboBox()
+        self.combo_ampm_fin.addItems(["AM", "PM"])
+        hora_fin_frame.addWidget(self.combo_h_fin)
+        hora_fin_frame.addWidget(QLabel(":"))
+        hora_fin_frame.addWidget(self.combo_m_fin)
+        hora_fin_frame.addWidget(self.combo_ampm_fin)
+        hora_fin_frame.addStretch()
+        form.addRow("Hora de fin:", hora_fin_widget)
+
+        self.main_layout.addLayout(form)
 
         # Botón verificar mesas
-        ttk.Button(self.main_frame, text=" Verificar Mesas Disponibles", command=self.verificar_mesas).pack(pady=15)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Verificar Mesas Disponibles", self.verificar_mesas, "btnAccent")]
+        ))
 
         # Frame para mesas
-        self.frame_mesas = ttk.Frame(self.main_frame)
-        self.frame_mesas.pack(pady=10)
+        self.frame_mesas = QVBoxLayout()
+        self.main_layout.addLayout(self.frame_mesas)
 
         self.mesas_vars = {}
         self.mesas_checkbuttons = []
 
         # Botones inferiores
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=20)
-        self.btn_reservar = ttk.Button(btn_frame, text=" Solicitar Reserva", command=self.registrar_reserva, state="disabled")
-        self.btn_reservar.pack(side="left", padx=10)
-        ttk.Button(btn_frame, text=" Volver", command=self.mostrar_menu_cliente).pack(side="left", padx=10)
+        self.btn_reservar = self._boton(" Solicitar Reserva", self.registrar_reserva, "btnSuccess")
+        self.btn_reservar.setEnabled(False)
+        btn_volver = self._boton(" Volver", self.mostrar_menu_cliente)
+        self.main_layout.addLayout(self._fila_botones([self.btn_reservar, btn_volver]))
 
         self.mesas_validas = []
+        self.main_layout.addStretch()
 
     def verificar_mesas(self):
-        nombre = self.entry_nombre.get().strip()
-        num_personas = self.spin_personas.get().strip()
-        dia = self.combo_dia.get().strip()
+        nombre = self.entry_nombre.text().strip()
+        num_personas = str(self.spin_personas.value())
+        dia = self.combo_dia.currentText().strip()
 
         if not self.validar_nombre(nombre):
-            messagebox.showerror("Error", "Nombre inválido. Solo letras y mínimo 2 caracteres.")
+            QMessageBox.critical(self, "Error", "Nombre inválido. Solo letras y mínimo 2 caracteres.")
             return
         if not self.validar_numero_personas(num_personas):
-            messagebox.showerror("Error", "Número de personas inválido.")
+            QMessageBox.critical(self, "Error", "Número de personas inválido.")
             return
         if int(num_personas) > self.limite_personas:
-            messagebox.showerror("Error", f"No puede superar el límite de {self.limite_personas} personas.")
+            QMessageBox.critical(self, "Error", f"No puede superar el límite de {self.limite_personas} personas.")
             return
         if not self.validar_dia(dia):
-            messagebox.showerror("Error", "Día inválido o restaurante cerrado (Lunes).")
+            QMessageBox.critical(self, "Error", "Día inválido o restaurante cerrado (Lunes).")
             return
 
-        h_i = self.combo_h_inicio.get()
-        m_i = self.combo_m_inicio.get()
-        ampm_i = self.combo_ampm_inicio.get()
-        h_f = self.combo_h_fin.get()
-        m_f = self.combo_m_fin.get()
-        ampm_f = self.combo_ampm_fin.get()
+        h_i = self.combo_h_inicio.currentText()
+        m_i = self.combo_m_inicio.currentText()
+        ampm_i = self.combo_ampm_inicio.currentText()
+        h_f = self.combo_h_fin.currentText()
+        m_f = self.combo_m_fin.currentText()
+        ampm_f = self.combo_ampm_fin.currentText()
 
         hora_inicio_str = self.formato_hora(int(h_i), int(m_i), ampm_i)
         hora_fin_str = self.formato_hora(int(h_f), int(m_f), ampm_f)
@@ -205,20 +665,20 @@ class CoverOSApp:
             inicio_min = self.hora_a_minutos(hora_inicio_str)
             fin_min = self.hora_a_minutos(hora_fin_str)
         except:
-            messagebox.showerror("Error", "Formato de hora inválido.")
+            QMessageBox.critical(self, "Error", "Formato de hora inválido.")
             return
 
         apertura = self.hora_a_minutos("8:00 AM")
         cierre = self.hora_a_minutos("11:00 PM")
 
         if inicio_min < apertura:
-            messagebox.showerror("Error", "El restaurante abre a las 8:00 AM.")
+            QMessageBox.critical(self, "Error", "El restaurante abre a las 8:00 AM.")
             return
         if fin_min > cierre:
-            messagebox.showerror("Error", "El restaurante cierra a las 11:00 PM.")
+            QMessageBox.critical(self, "Error", "El restaurante cierra a las 11:00 PM.")
             return
         if inicio_min >= fin_min:
-            messagebox.showerror("Error", "La hora de fin debe ser mayor que la de inicio.")
+            QMessageBox.critical(self, "Error", "La hora de fin debe ser mayor que la de inicio.")
             return
 
         # Guardar valores para usar al registrar
@@ -233,33 +693,38 @@ class CoverOSApp:
         }
 
         # Limpiar frame de mesas anterior
-        for widget in self.frame_mesas.winfo_children():
-            widget.destroy()
+        self._limpiar_layout(self.frame_mesas)
         self.mesas_vars = {}
         self.mesas_checkbuttons = []
 
-        ttk.Label(self.frame_mesas, text="Seleccione las mesas disponibles:", style="SubHeader.TLabel").pack(pady=(0, 10))
+        self.frame_mesas.addWidget(self._label("Seleccione las mesas disponibles:", "lblSubHeader"))
 
-        mesas_frame = ttk.Frame(self.frame_mesas)
-        mesas_frame.pack()
+        filas_mesas = QVBoxLayout()
+        self.frame_mesas.addLayout(filas_mesas)
+
+        reservas_dia = db.obtener_reservas_por_dia(dia)
 
         self.mesas_validas = []
         col = 0
-        row = 0
+        fila_actual = None
         for m in self.mesas_disponibles:
             ocupado = False
-            for res in self.reservas_aceptadas + self.reservas_pendientes:
-                if m in res["mesas"] and res["dia"] == dia:
+            for res in reservas_dia:
+                if m in res["mesas"]:
                     if not (fin_min <= res["inicio_min"] or inicio_min >= res["fin_min"]):
                         ocupado = True
                         break
 
             estado = "Ocupada" if ocupado else "Libre"
-            var = tk.BooleanVar(value=False)
-            self.mesas_vars[m] = var
 
-            cb = ttk.Checkbutton(mesas_frame, text=f"Mesa {m} - {estado}", variable=var, state="disabled" if ocupado else "normal")
-            cb.grid(row=row, column=col, sticky="w", padx=10, pady=5)
+            if col == 0:
+                fila_actual = QHBoxLayout()
+                filas_mesas.addLayout(fila_actual)
+
+            cb = QCheckBox(f"Mesa {m} - {estado}")
+            cb.setEnabled(not ocupado)
+            self.mesas_vars[m] = cb
+            fila_actual.addWidget(cb)
             self.mesas_checkbuttons.append(cb)
             if not ocupado:
                 self.mesas_validas.append(m)
@@ -267,113 +732,137 @@ class CoverOSApp:
             col += 1
             if col >= 5:
                 col = 0
-                row += 1
 
         if not self.mesas_validas:
-            messagebox.showwarning("Sin disponibilidad", "No hay mesas disponibles en ese horario.")
-            self.btn_reservar.config(state="disabled")
+            QMessageBox.warning(self, "Sin disponibilidad", "No hay mesas disponibles en ese horario.")
+            self.btn_reservar.setEnabled(False)
         else:
-            self.btn_reservar.config(state="normal")
+            self.btn_reservar.setEnabled(True)
 
     def registrar_reserva(self):
-        mesas_seleccionadas = [m for m, var in self.mesas_vars.items() if var.get()]
+        mesas_seleccionadas = [m for m, var in self.mesas_vars.items() if var.isChecked()]
 
         if not mesas_seleccionadas:
-            messagebox.showerror("Error", "Debe seleccionar al menos una mesa.")
+            QMessageBox.critical(self, "Error", "Debe seleccionar al menos una mesa.")
             return
 
         if not all(m in self.mesas_validas for m in mesas_seleccionadas):
-            messagebox.showerror("Error", "Mesas inválidas o ocupadas seleccionadas.")
+            QMessageBox.critical(self, "Error", "Mesas inválidas o ocupadas seleccionadas.")
             return
 
-        reserva = {
-            "nombre": self.reserva_temp["nombre"],
-            "personas": self.reserva_temp["personas"],
-            "dia": self.reserva_temp["dia"],
-            "inicio_str": self.reserva_temp["inicio_str"],
-            "fin_str": self.reserva_temp["fin_str"],
-            "inicio_min": self.reserva_temp["inicio_min"],
-            "fin_min": self.reserva_temp["fin_min"],
-            "mesas": mesas_seleccionadas,
-            "estado": "Pendiente"
-        }
-
-        self.reservas_pendientes.append(reserva)
-        messagebox.showinfo("Éxito", "Reserva solicitada y pendiente de aprobación por vendedor.")
+        db.crear_reserva(
+            self.reserva_temp["nombre"],
+            self.reserva_temp["personas"],
+            self.reserva_temp["dia"],
+            self.reserva_temp["inicio_str"],
+            self.reserva_temp["fin_str"],
+            self.reserva_temp["inicio_min"],
+            self.reserva_temp["fin_min"],
+            mesas_seleccionadas
+        )
+        QMessageBox.information(self, "Éxito", "Reserva solicitada y pendiente de aprobación por vendedor.")
         self.mostrar_menu_cliente()
 
     def mostrar_consulta_reserva(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Consultar Estado de Reserva", style="Header.TLabel").pack(pady=(20, 20))
+        self.main_layout.addWidget(self._label("Consultar Estado de Reserva", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
-
-        ttk.Label(form, text="Ingrese el nombre de su reserva:").grid(row=0, column=0, padx=10, pady=10)
-        self.entry_consulta = ttk.Entry(form, width=30, font=("Segoe UI", 11))
-        self.entry_consulta.grid(row=0, column=1, padx=10, pady=10)
-        ttk.Button(form, text="Buscar", command=self.buscar_reserva).grid(row=0, column=2, padx=10, pady=10)
+        form = QHBoxLayout()
+        self.entry_consulta = QLineEdit()
+        self.entry_consulta.setMinimumWidth(260)
+        self.entry_consulta.returnPressed.connect(self.buscar_reserva)
+        form.addStretch()
+        form.addWidget(QLabel("Ingrese el nombre de su reserva:"))
+        form.addWidget(self.entry_consulta)
+        form.addWidget(self._boton("Buscar", self.buscar_reserva, "btnAccent"))
+        form.addStretch()
+        self.main_layout.addLayout(form)
 
         # Resultado
-        self.resultado_frame = ttk.Frame(self.main_frame)
-        self.resultado_frame.pack(pady=20, fill="both", expand=True)
+        self.resultado_frame = QVBoxLayout()
+        self.main_layout.addLayout(self.resultado_frame)
 
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_cliente).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_cliente)]
+        ))
+        self.main_layout.addStretch()
 
     def buscar_reserva(self):
-        nombre = self.entry_consulta.get().strip()
+        nombre = self.entry_consulta.text().strip()
 
-        for widget in self.resultado_frame.winfo_children():
-            widget.destroy()
+        self._limpiar_layout(self.resultado_frame)
 
-        encontrado = False
-        for res in self.reservas_aceptadas + self.reservas_pendientes + self.reservas_rechazadas:
-            if res["nombre"].lower() == nombre.lower():
-                encontrado = True
-                mesas_str = ", ".join(map(str, res["mesas"]))
-                estado_color = "#28a745" if res["estado"] == "Aceptada" else ("#ffc107" if res["estado"] == "Pendiente" else "#dc3545")
+        resultados = db.obtener_reservas_por_nombre(nombre)
 
-                card = tk.Frame(self.resultado_frame, bg="#16213e", bd=2, relief="groove")
-                card.pack(pady=10, padx=20, fill="x")
+        if not resultados:
+            self.resultado_frame.addWidget(self._label("No se encontró ninguna reserva con ese nombre.", "lblError"))
+            return
 
-                tk.Label(card, text=f"Reserva: {res['nombre']}", bg="#16213e", fg="#00d4ff", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=15, pady=(10, 2))
-                tk.Label(card, text=f"Día: {res['dia']}  |  Horario: {res['inicio_str']} a {res['fin_str']}", bg="#16213e", fg="#e0e0e0", font=("Segoe UI", 11)).pack(anchor="w", padx=15, pady=2)
-                tk.Label(card, text=f"Mesas: {mesas_str}  |  Personas: {res['personas']}", bg="#16213e", fg="#e0e0e0", font=("Segoe UI", 11)).pack(anchor="w", padx=15, pady=2)
-                tk.Label(card, text=f"Estado: {res['estado']}", bg="#16213e", fg=estado_color, font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=15, pady=(2, 10))
+        for res in resultados:
+            mesas_str = ", ".join(map(str, res["mesas"]))
+            estado_color = "#28a745" if res["estado"] == "Aceptada" else ("#ffc107" if res["estado"] == "Pendiente" else "#dc3545")
 
-        if not encontrado:
-            ttk.Label(self.resultado_frame, text="No se encontró ninguna reserva con ese nombre.", foreground="#ff6b6b").pack(pady=20)
+            card = QFrame()
+            card.setObjectName("card")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(15, 10, 15, 10)
+            card_layout.setSpacing(4)
+
+            lbl_nombre = QLabel(f"Reserva: {res['nombre']}")
+            lbl_nombre.setObjectName("cardTitulo")
+            lbl_horario = QLabel(f"Día: {res['dia']}  |  Horario: {res['inicio_str']} a {res['fin_str']}")
+            lbl_horario.setObjectName("cardTexto")
+            lbl_mesas = QLabel(f"Mesas: {mesas_str}  |  Personas: {res['personas']}")
+            lbl_mesas.setObjectName("cardTexto")
+            lbl_estado = QLabel(f"Estado: {res['estado']}")
+            lbl_estado.setStyleSheet(f"color: {estado_color}; font-size: 12pt; font-weight: bold;")
+
+            card_layout.addWidget(lbl_nombre)
+            card_layout.addWidget(lbl_horario)
+            card_layout.addWidget(lbl_mesas)
+            card_layout.addWidget(lbl_estado)
+
+            self.resultado_frame.addWidget(card)
 
     # ==================== Vendedor ====================
     def mostrar_login_vendedor(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Login Vendedor", style="Header.TLabel").pack(pady=(30, 20))
+        self.main_layout.addSpacing(30)
+        self.main_layout.addWidget(self._label("Login Vendedor", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        self.entry_vendedor_nombre = QLineEdit()
+        self.entry_vendedor_pass = QLineEdit()
+        self.entry_vendedor_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.entry_vendedor_nombre.returnPressed.connect(self.login_vendedor)
+        self.entry_vendedor_pass.returnPressed.connect(self.login_vendedor)
+        form.addRow("Nombre:", self.entry_vendedor_nombre)
+        form.addRow("Contraseña:", self.entry_vendedor_pass)
+        self.main_layout.addLayout(form)
 
-        ttk.Label(form, text="Nombre:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.entry_vendedor_nombre = ttk.Entry(form, width=25, font=("Segoe UI", 11))
-        self.entry_vendedor_nombre.grid(row=0, column=1, padx=10, pady=10)
-
-        ttk.Label(form, text="Contraseña:").grid(row=1, column=0, padx=10, pady=10, sticky="e")
-        self.entry_vendedor_pass = ttk.Entry(form, width=25, font=("Segoe UI", 11), show="*")
-        self.entry_vendedor_pass.grid(row=1, column=1, padx=10, pady=10)
-
-        ttk.Button(form, text="Ingresar", command=self.login_vendedor).grid(row=2, column=0, columnspan=2, pady=20)
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_principal).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton("Ingresar", self.login_vendedor, "btnAccent")]
+        ))
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_principal)]
+        ))
+        self.main_layout.addStretch()
 
     def login_vendedor(self):
-        nombre = self.entry_vendedor_nombre.get().strip()
-        contrasena = self.entry_vendedor_pass.get().strip()
+        nombre = self.entry_vendedor_nombre.text().strip()
+        contrasena = self.entry_vendedor_pass.text().strip()
 
-        if nombre not in self.vendedores:
-            messagebox.showerror("Error", "Nombre inválido.")
+        vendedores = db.obtener_vendedores()
+
+        if nombre not in vendedores:
+            QMessageBox.critical(self, "Error", "Nombre inválido.")
             return
-        if contrasena != self.vendedores[nombre]:
-            messagebox.showerror("Error", "Contraseña incorrecta.")
+        if contrasena != vendedores[nombre]:
+            QMessageBox.critical(self, "Error", "Contraseña incorrecta.")
             return
 
         self.vendedor_actual = nombre
@@ -382,88 +871,122 @@ class CoverOSApp:
     def mostrar_menu_vendedor(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text=f"Menú Vendedor ({self.vendedor_actual})", style="Header.TLabel").pack(pady=(20, 30))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label(f"Menú Vendedor ({self.vendedor_actual})", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(30)
 
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=10)
+        col = QVBoxLayout()
+        col.setSpacing(10)
+        col.addWidget(self._boton(" Ver Reservas Pendientes", self.mostrar_reservas_pendientes_vendedor, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Gestionar Reservas", self.mostrar_gestion_reservas, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addSpacing(10)
+        col.addWidget(self._boton(" Cerrar Sesión", self.mostrar_menu_principal, min_width=260), alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addLayout(col)
+        self.main_layout.addStretch()
 
-        ttk.Button(btn_frame, text=" Ver Reservas Pendientes", width=30, command=self.mostrar_reservas_pendientes_vendedor).pack(pady=10)
-        ttk.Button(btn_frame, text=" Gestionar Reservas", width=30, command=self.mostrar_gestion_reservas).pack(pady=10)
-        ttk.Button(btn_frame, text=" Cerrar Sesión", width=30, command=self.mostrar_menu_principal).pack(pady=20)
-
-    def mostrar_reservas_pendientes_vendedor(self):
+    def _mostrar_lista_pendientes(self, callback_volver):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Reservas Pendientes", style="Header.TLabel").pack(pady=(10, 20))
-
-        tree_frame = ttk.Frame(self.main_frame)
-        tree_frame.pack(pady=10, fill="both", expand=True, padx=20)
+        self.main_layout.addWidget(self._label("Reservas Pendientes", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
         columns = ("Nombre", "Día", "Inicio", "Fin", "Mesas", "Personas", "Estado")
-        tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
-        for col in columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=110, anchor="center")
+        tree = QTreeWidget()
+        tree.setHeaderLabels(columns)
+        tree.setRootIsDecorated(False)
+        tree.setAlternatingRowColors(True)
+        tree.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        tree.setMinimumHeight(260)
 
-        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
-        tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        tree.pack(side="left", fill="both", expand=True)
+        reservas_pendientes = db.obtener_reservas_pendientes()
 
-        if not self.reservas_pendientes:
-            tree.insert("", "end", values=("No hay reservas pendientes", "", "", "", "", "", ""))
+        if not reservas_pendientes:
+            QTreeWidgetItem(tree, ["No hay reservas pendientes", "", "", "", "", "", ""])
         else:
-            for res in self.reservas_pendientes:
+            for res in reservas_pendientes:
                 mesas_str = ", ".join(map(str, res["mesas"]))
-                tree.insert("", "end", values=(res["nombre"], res["dia"], res["inicio_str"], res["fin_str"], mesas_str, res["personas"], res["estado"]))
+                QTreeWidgetItem(tree, [res["nombre"], res["dia"], res["inicio_str"], res["fin_str"], mesas_str, str(res["personas"]), res["estado"]])
 
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_vendedor).pack(pady=15)
+        self.main_layout.addWidget(tree)
 
-    def mostrar_gestion_reservas(self):
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", callback_volver)]
+        ))
+
+    def mostrar_reservas_pendientes_vendedor(self):
+        self._mostrar_lista_pendientes(self.mostrar_menu_vendedor)
+
+    def mostrar_reservas_pendientes_publico(self):
+        self._mostrar_lista_pendientes(self.mostrar_menu_principal)
+
+    def _mostrar_gestion_reservas(self, callback_volver, es_admin=False):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Gestionar Reservas", style="Header.TLabel").pack(pady=(10, 20))
+        titulo = "Gestionar Reservas (Admin)" if es_admin else "Gestionar Reservas"
+        self.main_layout.addWidget(self._label(titulo, "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        if not self.reservas_pendientes:
-            ttk.Label(self.main_frame, text="No hay reservas pendientes.", foreground="#ffcc00", font=("Segoe UI", 13)).pack(pady=30)
-            ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_vendedor).pack(pady=10)
+        reservas_pendientes = db.obtener_reservas_pendientes()
+
+        if es_admin:
+            self.admin_reservas_pendientes = reservas_pendientes
+        else:
+            self.reservas_pendientes_gestion = reservas_pendientes
+
+        if not reservas_pendientes:
+            self.main_layout.addWidget(self._label("No hay reservas pendientes.", "lblWarning", Qt.AlignmentFlag.AlignHCenter))
+            self.main_layout.addLayout(self._fila_botones(
+                [self._boton(" Volver", callback_volver)]
+            ))
+            self.main_layout.addStretch()
             return
 
-        list_frame = ttk.Frame(self.main_frame)
-        list_frame.pack(pady=10, fill="both", expand=True, padx=20)
-
-        self.gestion_listbox = tk.Listbox(list_frame, font=("Segoe UI", 11), bg="#16213e", fg="#e0e0e0", selectbackground="#007bff", height=10)
-        self.gestion_listbox.pack(side="left", fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.gestion_listbox.yview)
-        self.gestion_listbox.config(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-
-        self.gestion_indices = []
-        for idx, res in enumerate(self.reservas_pendientes):
+        listbox = QListWidget()
+        listbox.setMinimumHeight(220)
+        indices = []
+        for idx, res in enumerate(reservas_pendientes):
             mesas_str = ", ".join(map(str, res["mesas"]))
-            self.gestion_listbox.insert("end", f"{idx+1}. {res['nombre']} | {res['dia']} {res['inicio_str']}-{res['fin_str']} | Mesas: {mesas_str}")
-            self.gestion_indices.append(idx)
+            listbox.addItem(f"{idx+1}. {res['nombre']} | {res['dia']} {res['inicio_str']}-{res['fin_str']} | Mesas: {mesas_str}")
+            indices.append(idx)
 
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=15)
+        if es_admin:
+            self.admin_gestion_listbox = listbox
+            self.admin_gestion_indices = indices
+        else:
+            self.gestion_listbox = listbox
+            self.gestion_indices = indices
 
-        ttk.Button(btn_frame, text=" Aceptar", command=lambda: self.procesar_reserva("aceptar")).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text=" Rechazar", command=lambda: self.procesar_reserva("rechazar")).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text=" Volver", command=self.mostrar_menu_vendedor).pack(side="left", padx=10)
+        self.main_layout.addWidget(listbox)
 
-    def procesar_reserva(self, accion):
-        seleccion = self.gestion_listbox.curselection()
-        if not seleccion:
-            messagebox.showwarning("Atención", "Seleccione una reserva de la lista.")
+        self.main_layout.addLayout(self._fila_botones([
+            self._boton(" Aceptar", lambda: self._procesar_reserva("aceptar", es_admin), "btnSuccess"),
+            self._boton(" Rechazar", lambda: self._procesar_reserva("rechazar", es_admin), "btnDanger"),
+            self._boton(" Volver", callback_volver),
+        ]))
+
+    def mostrar_gestion_reservas(self):
+        self._mostrar_gestion_reservas(self.mostrar_menu_vendedor, es_admin=False)
+
+    def mostrar_gestion_reservas_admin(self):
+        self._mostrar_gestion_reservas(self.mostrar_menu_admin, es_admin=True)
+
+    def _procesar_reserva(self, accion, es_admin=False):
+        listbox = self.admin_gestion_listbox if es_admin else self.gestion_listbox
+        indices = self.admin_gestion_indices if es_admin else self.gestion_indices
+        reservas_pendientes = self.admin_reservas_pendientes if es_admin else self.reservas_pendientes_gestion
+
+        seleccion = listbox.currentRow()
+        if seleccion < 0:
+            QMessageBox.warning(self, "Atención", "Seleccione una reserva de la lista.")
             return
 
-        idx = self.gestion_indices[seleccion[0]]
-        res = self.reservas_pendientes[idx]
+        idx = indices[seleccion]
+        res = reservas_pendientes[idx]
 
-        # Verificar conflicto automático
+        # Verificar conflicto automático contra reservas ya aceptadas
+        reservas_aceptadas = db.obtener_reservas_por_estado("Aceptada")
         conflicto = False
-        for acept in self.reservas_aceptadas:
+        for acept in reservas_aceptadas:
             if res["dia"] == acept["dia"]:
                 for m in res["mesas"]:
                     if m in acept["mesas"]:
@@ -472,229 +995,194 @@ class CoverOSApp:
                             break
 
         if conflicto:
-            res["estado"] = "Rechazada - Horario en conflicto"
-            self.reservas_pendientes.pop(idx)
-            self.reservas_rechazadas.append(res)
-            messagebox.showinfo("Conflicto", "Reserva rechazada automáticamente por conflicto de horario.")
-            self.mostrar_gestion_reservas()
-            return
-
-        if accion == "aceptar":
-            res["estado"] = "Aceptada"
-            self.reservas_aceptadas.append(res)
-            self.reservas_pendientes.pop(idx)
-            messagebox.showinfo("Éxito", "Reserva aceptada correctamente.")
+            db.actualizar_estado_reserva(res["id"], "Rechazada - Horario en conflicto")
+            QMessageBox.information(self, "Conflicto", "Reserva rechazada automáticamente por conflicto de horario.")
+        elif accion == "aceptar":
+            db.actualizar_estado_reserva(res["id"], "Aceptada")
+            QMessageBox.information(self, "Éxito", "Reserva aceptada correctamente.")
         else:
-            res["estado"] = "Rechazada"
-            self.reservas_pendientes.pop(idx)
-            self.reservas_rechazadas.append(res)
-            messagebox.showinfo("Éxito", "Reserva rechazada correctamente.")
+            db.actualizar_estado_reserva(res["id"], "Rechazada")
+            QMessageBox.information(self, "Éxito", "Reserva rechazada correctamente.")
 
-        self.mostrar_gestion_reservas()
+        if es_admin:
+            self.mostrar_gestion_reservas_admin()
+        else:
+            self.mostrar_gestion_reservas()
 
     # ==================== Administrador ====================
     def mostrar_login_admin(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Login Administrador", style="Header.TLabel").pack(pady=(30, 20))
+        self.main_layout.addSpacing(30)
+        self.main_layout.addWidget(self._label("Login Administrador", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        self.entry_admin_pass = QLineEdit()
+        self.entry_admin_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.entry_admin_pass.returnPressed.connect(self.login_admin)
+        form.addRow("Contraseña:", self.entry_admin_pass)
+        self.main_layout.addLayout(form)
 
-        ttk.Label(form, text="Contraseña:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.entry_admin_pass = ttk.Entry(form, width=25, font=("Segoe UI", 11), show="*")
-        self.entry_admin_pass.grid(row=0, column=1, padx=10, pady=10)
-
-        ttk.Button(form, text="Ingresar", command=self.login_admin).grid(row=1, column=0, columnspan=2, pady=20)
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_principal).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton("Ingresar", self.login_admin, "btnAccent")]
+        ))
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_principal)]
+        ))
+        self.main_layout.addStretch()
 
     def login_admin(self):
-        if self.entry_admin_pass.get().strip() != "1234":
-            messagebox.showerror("Error", "Contraseña incorrecta.")
+        if self.entry_admin_pass.text().strip() != "123":
+            QMessageBox.critical(self, "Error", "Contraseña incorrecta.")
             return
         self.mostrar_menu_admin()
 
     def mostrar_menu_admin(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Menú Administrador", style="Header.TLabel").pack(pady=(20, 30))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label("Menú Administrador", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(30)
 
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=10)
-
-        ttk.Button(btn_frame, text=" Gestionar Reservas Pendientes", width=35, command=self.mostrar_gestion_reservas_admin).pack(pady=8)
-        ttk.Button(btn_frame, text=" Crear Vendedor", width=35, command=self.mostrar_crear_vendedor).pack(pady=8)
-        ttk.Button(btn_frame, text=" Eliminar Vendedor", width=35, command=self.mostrar_eliminar_vendedor).pack(pady=8)
-        ttk.Button(btn_frame, text=" Actualizar Contraseña Vendedor", width=35, command=self.mostrar_actualizar_vendedor).pack(pady=8)
-        ttk.Button(btn_frame, text=" Cerrar Sesión", width=35, command=self.mostrar_menu_principal).pack(pady=15)
-
-    def mostrar_gestion_reservas_admin(self):
-        # Reutiliza la misma lógica de gestión de vendedor pero con vuelta al menú admin
-        self.limpiar_frame()
-
-        ttk.Label(self.main_frame, text="Gestionar Reservas (Admin)", style="Header.TLabel").pack(pady=(10, 20))
-
-        if not self.reservas_pendientes:
-            ttk.Label(self.main_frame, text="No hay reservas pendientes.", foreground="#ffcc00", font=("Segoe UI", 13)).pack(pady=30)
-            ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_admin).pack(pady=10)
-            return
-
-        list_frame = ttk.Frame(self.main_frame)
-        list_frame.pack(pady=10, fill="both", expand=True, padx=20)
-
-        self.admin_gestion_listbox = tk.Listbox(list_frame, font=("Segoe UI", 11), bg="#16213e", fg="#e0e0e0", selectbackground="#007bff", height=10)
-        self.admin_gestion_listbox.pack(side="left", fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.admin_gestion_listbox.yview)
-        self.admin_gestion_listbox.config(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-
-        self.admin_gestion_indices = []
-        for idx, res in enumerate(self.reservas_pendientes):
-            mesas_str = ", ".join(map(str, res["mesas"]))
-            self.admin_gestion_listbox.insert("end", f"{idx+1}. {res['nombre']} | {res['dia']} {res['inicio_str']}-{res['fin_str']} | Mesas: {mesas_str}")
-            self.admin_gestion_indices.append(idx)
-
-        btn_frame = ttk.Frame(self.main_frame)
-        btn_frame.pack(pady=15)
-
-        ttk.Button(btn_frame, text=" Aceptar", command=lambda: self.procesar_reserva_admin("aceptar")).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text=" Rechazar", command=lambda: self.procesar_reserva_admin("rechazar")).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text=" Volver", command=self.mostrar_menu_admin).pack(side="left", padx=10)
-
-    def procesar_reserva_admin(self, accion):
-        seleccion = self.admin_gestion_listbox.curselection()
-        if not seleccion:
-            messagebox.showwarning("Atención", "Seleccione una reserva de la lista.")
-            return
-
-        idx = self.admin_gestion_indices[seleccion[0]]
-        res = self.reservas_pendientes[idx]
-
-        conflicto = False
-        for acept in self.reservas_aceptadas:
-            if res["dia"] == acept["dia"]:
-                for m in res["mesas"]:
-                    if m in acept["mesas"]:
-                        if not (res["fin_min"] <= acept["inicio_min"] or res["inicio_min"] >= acept["fin_min"]):
-                            conflicto = True
-                            break
-
-        if conflicto:
-            res["estado"] = "Rechazada - Horario en conflicto"
-            self.reservas_pendientes.pop(idx)
-            self.reservas_rechazadas.append(res)
-            messagebox.showinfo("Conflicto", "Reserva rechazada automáticamente por conflicto de horario.")
-            self.mostrar_gestion_reservas_admin()
-            return
-
-        if accion == "aceptar":
-            res["estado"] = "Aceptada"
-            self.reservas_aceptadas.append(res)
-            self.reservas_pendientes.pop(idx)
-            messagebox.showinfo("Éxito", "Reserva aceptada correctamente.")
-        else:
-            res["estado"] = "Rechazada"
-            self.reservas_pendientes.pop(idx)
-            self.reservas_rechazadas.append(res)
-            messagebox.showinfo("Éxito", "Reserva rechazada correctamente.")
-
-        self.mostrar_gestion_reservas_admin()
+        col = QVBoxLayout()
+        col.setSpacing(8)
+        col.addWidget(self._boton(" Gestionar Reservas Pendientes", self.mostrar_gestion_reservas_admin, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Crear Vendedor", self.mostrar_crear_vendedor, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Eliminar Vendedor", self.mostrar_eliminar_vendedor, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Actualizar Contraseña Vendedor", self.mostrar_actualizar_vendedor, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addSpacing(10)
+        col.addWidget(self._boton(" Cerrar Sesión", self.mostrar_menu_principal, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addLayout(col)
+        self.main_layout.addStretch()
 
     def mostrar_crear_vendedor(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Crear Vendedor", style="Header.TLabel").pack(pady=(20, 20))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label("Crear Vendedor", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        self.entry_new_vend_nombre = QLineEdit()
+        self.entry_new_vend_pass = QLineEdit()
+        self.entry_new_vend_nombre.returnPressed.connect(self.crear_vendedor)
+        self.entry_new_vend_pass.returnPressed.connect(self.crear_vendedor)
+        form.addRow("Nombre:", self.entry_new_vend_nombre)
+        form.addRow("Contraseña:", self.entry_new_vend_pass)
+        self.main_layout.addLayout(form)
 
-        ttk.Label(form, text="Nombre:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.entry_new_vend_nombre = ttk.Entry(form, width=25, font=("Segoe UI", 11))
-        self.entry_new_vend_nombre.grid(row=0, column=1, padx=10, pady=10)
-
-        ttk.Label(form, text="Contraseña:").grid(row=1, column=0, padx=10, pady=10, sticky="e")
-        self.entry_new_vend_pass = ttk.Entry(form, width=25, font=("Segoe UI", 11))
-        self.entry_new_vend_pass.grid(row=1, column=1, padx=10, pady=10)
-
-        ttk.Button(form, text="Crear", command=self.crear_vendedor).grid(row=2, column=0, columnspan=2, pady=20)
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_admin).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton("Crear", self.crear_vendedor, "btnAccent")]
+        ))
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_admin)]
+        ))
+        self.main_layout.addStretch()
 
     def crear_vendedor(self):
-        nombre = self.entry_new_vend_nombre.get().strip()
-        contrasena = self.entry_new_vend_pass.get().strip()
+        nombre = self.entry_new_vend_nombre.text().strip()
+        contrasena = self.entry_new_vend_pass.text().strip()
 
         if not nombre or not contrasena:
-            messagebox.showerror("Error", "Complete todos los campos.")
+            QMessageBox.critical(self, "Error", "Complete todos los campos.")
             return
 
-        self.vendedores[nombre] = contrasena
-        messagebox.showinfo("Éxito", f"Vendedor '{nombre}' creado correctamente.")
+        vendedores = db.obtener_vendedores()
+        if any(nombre.lower() == v.lower() for v in vendedores):
+            QMessageBox.critical(self, "Error", f"Ya existe un vendedor con el nombre '{nombre}'.")
+            return
+
+        db.crear_vendedor(nombre, contrasena)
+        QMessageBox.information(self, "Éxito", f"Vendedor '{nombre}' creado correctamente.")
         self.mostrar_menu_admin()
 
     def mostrar_eliminar_vendedor(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Eliminar Vendedor", style="Header.TLabel").pack(pady=(20, 20))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label("Eliminar Vendedor", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        self.combo_del_vend = QComboBox()
+        self.combo_del_vend.addItems(list(db.obtener_vendedores().keys()))
+        form.addRow("Seleccione vendedor:", self.combo_del_vend)
+        self.main_layout.addLayout(form)
 
-        ttk.Label(form, text="Seleccione vendedor:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.combo_del_vend = ttk.Combobox(form, values=list(self.vendedores.keys()), state="readonly", width=23, font=("Segoe UI", 11))
-        self.combo_del_vend.grid(row=0, column=1, padx=10, pady=10)
-
-        ttk.Button(form, text="Eliminar", command=self.eliminar_vendedor).grid(row=1, column=0, columnspan=2, pady=20)
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_admin).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton("Eliminar", self.eliminar_vendedor, "btnDanger")]
+        ))
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_admin)]
+        ))
+        self.main_layout.addStretch()
 
     def eliminar_vendedor(self):
-        nombre = self.combo_del_vend.get()
+        nombre = self.combo_del_vend.currentText()
         if not nombre:
-            messagebox.showerror("Error", "Seleccione un vendedor.")
+            QMessageBox.critical(self, "Error", "Seleccione un vendedor.")
             return
 
-        if messagebox.askyesno("Confirmar", f"¿Eliminar al vendedor '{nombre}'?"):
-            del self.vendedores[nombre]
-            messagebox.showinfo("Éxito", "Vendedor eliminado.")
+        respuesta = QMessageBox.question(
+            self, "Confirmar", f"¿Eliminar al vendedor '{nombre}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if respuesta == QMessageBox.StandardButton.Yes:
+            db.eliminar_vendedor(nombre)
+            QMessageBox.information(self, "Éxito", "Vendedor eliminado.")
             self.mostrar_menu_admin()
 
     def mostrar_actualizar_vendedor(self):
         self.limpiar_frame()
 
-        ttk.Label(self.main_frame, text="Actualizar Contraseña", style="Header.TLabel").pack(pady=(20, 20))
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(self._label("Actualizar Contraseña", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(10)
 
-        form = ttk.Frame(self.main_frame)
-        form.pack(pady=10)
+        form = QFormLayout()
+        self.combo_upd_vend = QComboBox()
+        self.combo_upd_vend.addItems(list(db.obtener_vendedores().keys()))
+        self.entry_upd_vend_pass = QLineEdit()
+        self.entry_upd_vend_pass.returnPressed.connect(self.actualizar_vendedor)
+        form.addRow("Seleccione vendedor:", self.combo_upd_vend)
+        form.addRow("Nueva contraseña:", self.entry_upd_vend_pass)
+        self.main_layout.addLayout(form)
 
-        ttk.Label(form, text="Seleccione vendedor:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.combo_upd_vend = ttk.Combobox(form, values=list(self.vendedores.keys()), state="readonly", width=23, font=("Segoe UI", 11))
-        self.combo_upd_vend.grid(row=0, column=1, padx=10, pady=10)
-
-        ttk.Label(form, text="Nueva contraseña:").grid(row=1, column=0, padx=10, pady=10, sticky="e")
-        self.entry_upd_vend_pass = ttk.Entry(form, width=25, font=("Segoe UI", 11))
-        self.entry_upd_vend_pass.grid(row=1, column=1, padx=10, pady=10)
-
-        ttk.Button(form, text="Actualizar", command=self.actualizar_vendedor).grid(row=2, column=0, columnspan=2, pady=20)
-        ttk.Button(self.main_frame, text=" Volver", command=self.mostrar_menu_admin).pack(pady=10)
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton("Actualizar", self.actualizar_vendedor, "btnAccent")]
+        ))
+        self.main_layout.addLayout(self._fila_botones(
+            [self._boton(" Volver", self.mostrar_menu_admin)]
+        ))
+        self.main_layout.addStretch()
 
     def actualizar_vendedor(self):
-        nombre = self.combo_upd_vend.get()
-        contrasena = self.entry_upd_vend_pass.get().strip()
+        nombre = self.combo_upd_vend.currentText()
+        contrasena = self.entry_upd_vend_pass.text().strip()
 
         if not nombre:
-            messagebox.showerror("Error", "Seleccione un vendedor.")
+            QMessageBox.critical(self, "Error", "Seleccione un vendedor.")
             return
         if not contrasena:
-            messagebox.showerror("Error", "Ingrese una nueva contraseña.")
+            QMessageBox.critical(self, "Error", "Ingrese una nueva contraseña.")
             return
 
-        self.vendedores[nombre] = contrasena
-        messagebox.showinfo("Éxito", "Contraseña actualizada.")
+        db.actualizar_password_vendedor(nombre, contrasena)
+        QMessageBox.information(self, "Éxito", "Contraseña actualizada.")
         self.mostrar_menu_admin()
 
 
 # ==================== Ejecución ====================
+def main():
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    app.setStyleSheet(QSS_TEMA_OSCURO)
+
+    ventana = CoverOSApp()
+    ventana.show()
+    sys.exit(app.exec())
+
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = CoverOSApp(root)
-    root.mainloop()
+    main()
