@@ -507,11 +507,11 @@ class CoverOSApp(QMainWindow):
 
         col = QVBoxLayout()
         col.setSpacing(10)
-        col.addWidget(self._boton(" Cliente", self.mostrar_menu_cliente, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
-        col.addWidget(self._boton(" Reservas Pendientes", self.mostrar_reservas_pendientes_publico, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
-        col.addWidget(self._boton(" Vendedor", self.mostrar_login_vendedor, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
-        col.addWidget(self._boton(" Administrador", self.mostrar_login_admin, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
-        col.addWidget(self._boton(" Salir", self.salir_app, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Registrar reserva", self.mostrar_menu_cliente, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Consultar reservas", self.mostrar_reservas_pendientes_publico, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Gestión de reservas", self.mostrar_login_vendedor, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Administración general", self.mostrar_login_admin, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
+        col.addWidget(self._boton(" Cerrar sesión", self.salir_app, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.addLayout(col)
         self.main_layout.addStretch()
 
