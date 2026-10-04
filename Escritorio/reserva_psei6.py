@@ -500,7 +500,7 @@ class CoverOSApp(QMainWindow):
         self.limpiar_frame()
 
         self.main_layout.addSpacing(30)
-        self.main_layout.addWidget(self._label("integrador II", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addWidget(self._label("Restaurante Don bigote", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         lbl_sub = self._label("Aplicacion escritorio en gestionamiento de Reservas", "lblSubHeader", Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.addWidget(lbl_sub)
         self.main_layout.addSpacing(20)
@@ -532,7 +532,7 @@ class CoverOSApp(QMainWindow):
         self.limpiar_frame()
 
         self.main_layout.addSpacing(20)
-        self.main_layout.addWidget(self._label("Menú Cliente", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addWidget(self._label("Registrar reserva", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         self.main_layout.addSpacing(30)
 
         col = QVBoxLayout()
@@ -831,7 +831,7 @@ class CoverOSApp(QMainWindow):
         self.limpiar_frame()
 
         self.main_layout.addSpacing(30)
-        self.main_layout.addWidget(self._label("Login Vendedor", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addWidget(self._label("Gestión de reservas", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         self.main_layout.addSpacing(10)
 
         form = QFormLayout()
@@ -872,7 +872,7 @@ class CoverOSApp(QMainWindow):
         self.limpiar_frame()
 
         self.main_layout.addSpacing(20)
-        self.main_layout.addWidget(self._label(f"Menú Vendedor ({self.vendedor_actual})", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addWidget(self._label(f"Gestión de reservas ({self.vendedor_actual})", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         self.main_layout.addSpacing(30)
 
         col = QVBoxLayout()
@@ -1014,7 +1014,7 @@ class CoverOSApp(QMainWindow):
         self.limpiar_frame()
 
         self.main_layout.addSpacing(30)
-        self.main_layout.addWidget(self._label("Login Administrador", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addWidget(self._label("Administración general", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         self.main_layout.addSpacing(10)
 
         form = QFormLayout()
