@@ -8,18 +8,24 @@
     <link rel="stylesheet" href="css/style.css">
     <script src="javascript/1.js" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+
 
 <nav>
 <img src="Assets/" alt="Logo restaurante">
 <div>
-  <a href=""></a>
-  <a href=""></a>
-  <a href=""></a>
+  <a href="#inicio">Inicio</a>
+  <a href="#menu">Menu</a>
+  <a href="#ubicacion">Ubicacion</a>
+  <a href="">contactos</a>
 </div>
 </nav>
- <div class="carrusel">
+ <div class="carrusel" id="inicio">
   <div class="track">
  
     <div class="slide">
@@ -52,73 +58,235 @@
 <main class="vot">
 <section class="vota" >
 <img src="assets/img/cmoida 2.avif" alt="comida basica">
-<p>Escoffier: Sobre todo, hazlo simple. La perfección no necesita adornos excesivos</p>
+
 </section>
 
 <article class="votaa">
 <p style="margin-top: 9%;">Nuestra historia comienza en el corazón de Nicaragua, entre volcanes, lagos y tradiciónes. Hoy, honramos esa herencia sirviendo Nicaragua en su forma más refinada, cada plato es un homenaje a nuestra raices.</p>
-<h6 style="margin-left: 15%;">claude</h6>
-<nav>
-<img src="img/Copilot_20260530_194601.png" alt="Logo del equipo">
-<div>
-    <a href="index.html">Inicio</a>
-  <a href="yooo.html">Futbol femenino</a>
-  <a href="historiadelfutbol.html">Historia futbol</a>
-</div>
-</nav>
- <div class="carrusel carrusel-secundario">
-  <div class="track">
- 
-    <div class="slide">
-      <img src="Assets/img/comida 1.avif" alt="vigoron">
-      <div class="texto"><h2>Vigoron</h2><p>Tradición nicaragüense servida en cada bocado</p></div>
-    </div>
- 
-    <div class="slide">
-      <img src="Assets/img/guirila-comida.jpg" alt="guirila">
-      <div class="texto"><h2>Guirila</h2><p>Tradición nicaragüense hecha de maíz y corazón</p></div>
-    </div>
- 
-    <div class="slide">
-      <img src="Assets/img/quesillo.jpg" alt="Quesillo">
-      <div class="texto"><h2>Quesillo</h2><p>El sabor de nuestra tierra, envuelto en tradición</p></div>
-    </div>
- 
-  </div>
-  <div class="dots"></div>
-</div>
+
+
+
 </article>
 </main> 
 
 
+<div class="servicios">
+<div>
+  <i class="fa-solid fa-utensils"></i>
+  <h3>Comida recién preparada</h3>
+  <p>Nuestra comida se hace al momento, por eso puede haber una pequeña espera.</p>
+</div>
 
+<div>
+  <i class="fa-solid fa-bell-concierge"></i>
+  <h3>Reserva una mesa y come en nuestro restaurante</h3>
+  <p>¿Una noche de salida? Nosotros nos encargamos de todo, tú solo disfruta.</p>
+</div>
 
+<div>
+  <i class="fa-solid fa-house"></i>
+  <h3>Pide, recoge y come en casa</h3>
+  <p>Haz tu pedido y recógelo de camino a casa.</p>
+</div>
 
+<div>
+  <i class="fa-solid fa-door-open"></i>
+  <h3>Entrega hasta tu puerta</h3>
+  <p>¿Noche en casa? Te llevamos la comida hasta tu puerta.</p>
+</div>
+</div>
 
+<!-- ===== MENÚ ===== -->
+<section class="menu-don-bigote" id="menu">
+  <div class="mn-wrap">
 
+    <header class="mn-head mn-anim">
+      <span class="mn-kicker">Al carbón desde El Viejo</span>
+      <h2>Nuestro <em>menú</em></h2>
+      <p>Carne a la parrilla, sabor nica de verdad y guaro del bueno. Todo hecho al momento.</p>
+    </header>
 
+    <div class="mn-tabs mn-anim" role="tablist">
+      <button class="mn-tab" role="tab" data-panel="mn-parrillas" aria-selected="true">Parrillas</button>
+      <button class="mn-tab" role="tab" data-panel="mn-tipicos" aria-selected="false">Platos típicos</button>
+      <button class="mn-tab" role="tab" data-panel="mn-picar" aria-selected="false">Para picar</button>
+      <button class="mn-tab" role="tab" data-panel="mn-bebidas" aria-selected="false">Bebidas</button>
+    </div>
 
-<main class="inicio">
-<section class="pri">
-<p>kaadkkdkadkd</p>
+    <!-- ========== PARRILLAS ========== -->
+    <div class="mn-panel" id="mn-parrillas" role="tabpanel">
+
+      <article class="mn-estrella mn-full mn-anim">
+        <span class="mn-sello">El favorito de la casa</span>
+        <div class="mn-estrella-txt">
+          <h3>Parrillada Don Bigote</h3>
+          <p>Churrasco, costilla de cerdo, chorizo parrillero y pollo a la parrilla, con queso asado, gallopinto, maduro y ensalada de repollo. Para compartir (o no).</p>
+        </div>
+        <div class="mn-estrella-precios">
+          <div><small>Para 2</small><strong>C$ 680</strong></div>
+          <div><small>Familiar (4-5)</small><strong>C$ 1,250</strong></div>
+        </div>
+      </article>
+
+      <div class="mn-group mn-anim">
+        <h3>Parrilla de res</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Churrasco</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 340</span></div><p>10 oz de res jugosa, al carbón, con chimichurri de la casa.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Punta de lomo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 320</span></div><p>Corte tierno, sellado a fuego fuerte y jugoso por dentro.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Carne asada</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 260</span></div><p>Estilo fritanga, con cebolla asada y limón.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>T-Bone</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 420</span></div><p>El corte grande, para los que vienen con hambre.</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Cerdo y pollo</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Costilla de cerdo BBQ</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 280</span></div><p>Cocida lenta y bañada en salsa BBQ ahumada.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Chuleta de cerdo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 230</span></div><p>Ahumada al carbón, con su toque de ajo.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Chorizo parrillero</h4><span class="mn-badge mn-badge--picante">Picosito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 160</span></div><p>Chorizo a la brasa, bien doradito.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Pollo a la parrilla</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 220</span></div><p>Medio pollo adobado y asado lento.</p></div>
+      </div>
+    </div>
+
+    <!-- ========== PLATOS TÍPICOS ========== -->
+    <div class="mn-panel" id="mn-tipicos" role="tabpanel" hidden>
+
+      <div class="mn-group mn-anim">
+        <h3>Clásicos nicas</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Plato fritanga</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 220</span></div><p>Cerdo frito, gallopinto, maduro, queso frito y ensalada de repollo.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Indio viejo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 190</span></div><p>Guiso de res deshilachada con masa de maíz, naranja agria y hierbabuena.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Vigorón</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 120</span></div><p>Yuca cocida, chicharrón y ensalada de repollo, en hoja de plátano.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Nacatamal</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 95</span></div><p>Masa de maíz con cerdo, arroz y papa, envuelto en hoja de plátano.</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Caldos, baho y dulce</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Baho</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 260</span></div><p>Res, yuca y plátano cocidos al vapor en hoja de plátano.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Sopa de mondongo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 180</span></div><p>Tripa de res con verduras, yuca y plátano. La cura de todo.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Tres leches</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 85</span></div><p>El postre clásico nicaragüense, bien mojadito.</p></div>
+      </div>
+    </div>
+
+    <!-- ========== PARA PICAR ========== -->
+    <div class="mn-panel" id="mn-picar" role="tabpanel" hidden>
+
+      <div class="mn-group mn-anim">
+        <h3>Para compartir</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Queso frito</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 90</span></div><p>Queso de freír dorado, con crema.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Tajadas con queso</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 110</span></div><p>Plátano verde frito, crujiente, con queso y repollo.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Yuca con chicharrón</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 115</span></div><p>Yuca frita con chicharrón y ensalada.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Quesillo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 70</span></div><p>Tortilla, queso, cebolla y crema.</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Acompañantes</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Gallopinto</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 45</span></div><p>Arroz y frijoles rojos, como debe ser.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Maduro frito</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 40</span></div><p>Plátano maduro dorado.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Ensalada de repollo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 35</span></div><p>Repollo, tomate y limón.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Tortillas de maíz</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 20</span></div><p>Calientitas, hechas al momento.</p></div>
+      </div>
+    </div>
+
+    <!-- ========== BEBIDAS ========== -->
+    <div class="mn-panel" id="mn-bebidas" role="tabpanel" hidden>
+
+      <div class="mn-group mn-anim">
+        <h3>Cervezas nacionales</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Toña</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 65</span></div><p>La clásica de Nicaragua, bien fría.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Victoria Clásica</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 65</span></div><p>La de siempre.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Victoria Frost</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 65</span></div><p>Ligera y refrescante.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Brahva</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 60</span></div><p>Rubia y refrescante.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Premium</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 60</span></div><p>Suave y ligera.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Balde de 6 cervezas</h4><span class="mn-badge">Combo</span><span class="mn-puntos"></span><span class="mn-precio">C$ 330</span></div><p>Con hielo, para compartir con los panas.</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Flor de Caña</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Flor de Caña 4 años</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 70</span></div><p>Extra Seco · trago (botella C$ 650)</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Flor de Caña 7 años</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 110</span></div><p>Gran Reserva · trago (botella C$ 950)</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Flor de Caña 12 años</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 190</span></div><p>Centenario · trago (botella C$ 1,600)</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Flor de Caña 18 años</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 340</span></div><p>Centenario · trago (botella C$ 2,900)</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Cócteles</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Macuá</h4><span class="mn-badge">Favorito</span><span class="mn-puntos"></span><span class="mn-precio">C$ 140</span></div><p>El cóctel nacional: Flor de Caña, guayaba, limón y azúcar.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Mojito</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 130</span></div><p>Ron, hierbabuena, limón y soda.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Cuba libre</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 100</span></div><p>Ron, Coca-Cola y limón.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Michelada</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 110</span></div><p>Toña con limón, sal y salsas, bien fría.</p></div>
+      </div>
+
+      <div class="mn-group mn-anim">
+        <h3>Sin alcohol</h3>
+        <div class="mn-item"><div class="mn-fila"><h4>Pinolillo</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 50</span></div><p>Maíz y cacao, bien nica.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Chía con limón</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 40</span></div><p>Fresquito y natural.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Fresco de jamaica</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 40</span></div><p>Natural, con hielo.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Gaseosa</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 35</span></div><p>Del sabor que quieras.</p></div>
+        <div class="mn-item"><div class="mn-fila"><h4>Agua</h4><span class="mn-puntos"></span><span class="mn-precio">C$ 25</span></div><p>Botella personal.</p></div>
+      </div>
+    </div>
+
+    <footer class="mn-pie mn-anim">
+      <p>Precios en córdobas (C$). Todas las parrillas se sirven con gallopinto, maduro y ensalada de repollo.</p>
+    </footer>
+
+  </div>
 </section>
 
-<article></article>
 
-<aside class="seg">
 
-<p>ksnajcajadvj</p>
-</aside>
+<main class="contactos" id="ubicacion">
+<section class="contac">
+<h1>Nuestra ubicacion</h1>
+<p>La ubicacion centrica de buena zona del municipio, teniando localidades turistica cerca facilita el acceso tanto a los vecinos como a los visitantes, y te permite disfrutar 
+de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p><br>
+
+<h4><i class="fa-solid fa-location-dot"></i>De las oficinas de claro el viejo, una calle al sur y 50 mts al oeste.</h4><br>
+<h4><i class="fa-solid fa-square-phone"></i>1010 2343</h4><br>
+<h4><i class="fa-solid fa-envelope"></i>proximo@gmail.com</h4>
+</section>
+
+
+<article class="contaaa">
+<div id="mapa" style="width:100%; height:100%; min-height:500px;"></div>
+</article>
 </main>
+
+<div class="sobre">
+
+<div class="so">
+<h2 style="color:rgb(255, 145, 0)">Sobre nostros</h2>
+<p>En Don Bigote nos enorgullece servir una gran variedad de platillos típicos nicaragüenses recién hechos, jugosas carnes asadas, tajadas, gallopinto y especialidades de la casa. Combinamos los ingredientes más frescos y la auténtica sazón tradicional preparada todos los días en nuestra cocina, ubicados en pleno centro de El Viejo, Chinandega.</p>
+</div>
+
+<div class="soo">
+<h2 style="color: rgb(255, 145, 0)"> horarios abiertos</h2>
+<p>
+  Lunes cerrado <br>
+  Martes: 8:00 AM - 11:00 PM<br>
+  Miércoles: 8:00 AM - 11:00 PM<br>
+  Jueves: 8:00 AM - 11:00 PM<br>
+  Viernes: 8:00 AM - 11:00 PM<br>
+  Sábado: 8:00 AM - 11:00 PM<br>
+  Domingo: 8:00 AM - 11:00 PM
+</p>
+</div>
+
+<div class="sooo">
+<h2 style="color: rgb(255, 145, 0);">Fotos comida </h2>
+<img src="Assets/img/comida 1.avif" alt="comida">
+</div>
+
+
+
+
+
+</div>
 
 
 
 <footer class="Foo">
-<h5>Proyecto integrador II</h5>
-<p>Este proyecto esta hecho cumplir una serie de metas</p>
-<h6>Derechos reservados</h6>
+<h3>Don bigote</h3>
+<p>El sabor viejano en un solo lugar</p>
+<h4>Derechos reservados</h4>
 </footer>
-
 
 </body>
 </html>
