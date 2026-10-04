@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QFrame, QHeaderView, QAbstractSpinBox
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 import db
 # ==================== Sistema de Reservas (GUI) - PySide6 ====================
 # Migración de tkinter/ttk a PySide6. Toda la lógica de negocio (validaciones,
@@ -186,6 +187,13 @@ QLabel#cardTitulo {
 
 QLabel#cardTexto {
     color: #e0e0e0;
+}
+
+/* ---------- Botones de filtro (activo) ---------- */
+QPushButton:checked {
+    background-color: #007bff;
+    color: #ffffff;
+    border: 1px solid #00d4ff;
 }
 
 /* ---------- Cuadros de diálogo ---------- */
@@ -377,6 +385,13 @@ QLabel#cardTexto {
     color: #1c2333;
 }
 
+/* ---------- Botones de filtro (activo) ---------- */
+QPushButton:checked {
+    background-color: #0d6efd;
+    color: #ffffff;
+    border: 1px solid #0a58ca;
+}
+
 /* ---------- Cuadros de diálogo ---------- */
 QMessageBox {
     background-color: #e7ebf4;
@@ -415,7 +430,17 @@ class CoverOSApp(QMainWindow):
         self.main_layout.setSpacing(14)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        self.vendedor_actual = ""
+        self.rol_actual = "Vendedor"
+
         self.mostrar_menu_principal()
+
+    def keyPressEvent(self, event):
+        # Esc = salida de emergencia en pantalla completa
+        if event.key() == Qt.Key.Key_Escape:
+            self.salir_app()
+            return
+        super().keyPressEvent(event)
 
     # ==================== Utilidades ====================
     def limpiar_frame(self):
@@ -511,12 +536,12 @@ class CoverOSApp(QMainWindow):
         col.addWidget(self._boton(" Consultar reservas", self.mostrar_reservas_pendientes_publico, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
         col.addWidget(self._boton(" Gestión de reservas", self.mostrar_login_vendedor, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
         col.addWidget(self._boton(" Administración general", self.mostrar_login_admin, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
-        col.addWidget(self._boton(" Cerrar sesión", self.salir_app, min_width=220), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.addLayout(col)
         self.main_layout.addStretch()
 
-        # ---------- Selector de tema, abajo a la derecha ----------
+        # ---------- Fila inferior: Cerrar (izquierda) y selector de tema (derecha) ----------
         tema_layout = QHBoxLayout()
+        tema_layout.addWidget(self._boton(" Cerrar", self.salir_app, "btnDanger", min_width=120))
         tema_layout.addStretch()
         tema_layout.addWidget(QLabel("Tema Visual:"))
         self.combo_tema = QComboBox()
@@ -866,7 +891,13 @@ class CoverOSApp(QMainWindow):
             return
 
         self.vendedor_actual = nombre
-        self.mostrar_menu_vendedor()
+        self.rol_actual = db.obtener_rol_vendedor(nombre)
+
+        if self.rol_actual == "Consultar reservas":
+            # Perfil de solo consulta: ve únicamente la pantalla de consulta
+            self._mostrar_lista_pendientes(self.mostrar_menu_principal, texto_volver=" Cerrar Sesión")
+        else:
+            self.mostrar_menu_vendedor()
 
     def mostrar_menu_vendedor(self):
         self.limpiar_frame()
@@ -884,34 +915,122 @@ class CoverOSApp(QMainWindow):
         self.main_layout.addLayout(col)
         self.main_layout.addStretch()
 
-    def _mostrar_lista_pendientes(self, callback_volver):
+    # ---------- Consultar reservas (todas, con filtros y buscador) ----------
+    FILTROS_CONSULTA = ["Todas", "Aceptadas", "Rechazadas", "En espera"]
+
+    def _clave_cronologica(self, res):
+        """Orden: día de la semana (Martes -> Domingo) y luego hora de inicio."""
+        dia = str(res["dia"]).strip().capitalize()
+        try:
+            idx_dia = self.dias_semana.index(dia)
+        except ValueError:
+            idx_dia = len(self.dias_semana)
+        return (idx_dia, res["inicio_min"], res["id"])
+
+    def _coincide_filtro(self, estado):
+        f = self._consulta_filtro
+        if f == "Todas":
+            return True
+        if f == "Aceptadas":
+            return estado == "Aceptada"
+        if f == "Rechazadas":
+            return estado.startswith("Rechazada")
+        if f == "En espera":
+            return estado == "Pendiente"
+        return True
+
+    def _mostrar_lista_pendientes(self, callback_volver, texto_volver=" Volver"):
         self.limpiar_frame()
 
-        self.main_layout.addWidget(self._label("Reservas Pendientes", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
-        self.main_layout.addSpacing(10)
+        self.main_layout.addWidget(self._label("Consultar Reservas", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
+        self.main_layout.addSpacing(6)
 
+        self._consulta_filtro = "Todas"
+        self._consulta_reservas = sorted(db.obtener_todas_las_reservas(), key=self._clave_cronologica)
+
+        # ---------- Buscador por nombre ----------
+        fila_busqueda = QHBoxLayout()
+        fila_busqueda.addWidget(QLabel("Buscar:"))
+        self.entry_busqueda = QLineEdit()
+        self.entry_busqueda.setPlaceholderText("Escriba un nombre...")
+        self.entry_busqueda.setClearButtonEnabled(True)
+        fila_busqueda.addWidget(self.entry_busqueda)
+        self.main_layout.addLayout(fila_busqueda)
+
+        # ---------- Botones de filtro ----------
+        self._botones_filtro = {}
+        fila_filtros = QHBoxLayout()
+        fila_filtros.addStretch()
+        for nombre_filtro in self.FILTROS_CONSULTA:
+            btn = QPushButton(nombre_filtro)
+            btn.setCheckable(True)
+            btn.setMinimumWidth(130)
+            btn.clicked.connect(lambda _=False, n=nombre_filtro: self._cambiar_filtro_consulta(n))
+            self._botones_filtro[nombre_filtro] = btn
+            fila_filtros.addWidget(btn)
+        fila_filtros.addStretch()
+        self.main_layout.addLayout(fila_filtros)
+
+        # ---------- Tabla ----------
         columns = ("Nombre", "Día", "Inicio", "Fin", "Mesas", "Personas", "Estado")
-        tree = QTreeWidget()
-        tree.setHeaderLabels(columns)
-        tree.setRootIsDecorated(False)
-        tree.setAlternatingRowColors(True)
-        tree.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        tree.setMinimumHeight(260)
+        self.tree_consulta = QTreeWidget()
+        self.tree_consulta.setHeaderLabels(columns)
+        self.tree_consulta.setRootIsDecorated(False)
+        self.tree_consulta.setAlternatingRowColors(True)
+        self.tree_consulta.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.tree_consulta.setMinimumHeight(260)
+        self.main_layout.addWidget(self.tree_consulta, 1)
 
-        reservas_pendientes = db.obtener_reservas_pendientes()
-
-        if not reservas_pendientes:
-            QTreeWidgetItem(tree, ["No hay reservas pendientes", "", "", "", "", "", ""])
-        else:
-            for res in reservas_pendientes:
-                mesas_str = ", ".join(map(str, res["mesas"]))
-                QTreeWidgetItem(tree, [res["nombre"], res["dia"], res["inicio_str"], res["fin_str"], mesas_str, str(res["personas"]), res["estado"]])
-
-        self.main_layout.addWidget(tree)
+        # ---------- Contador ----------
+        self.lbl_contador = QLabel("")
+        self.main_layout.addWidget(self.lbl_contador)
 
         self.main_layout.addLayout(self._fila_botones(
-            [self._boton(" Volver", callback_volver)]
+            [self._boton(texto_volver, callback_volver)]
         ))
+
+        self.entry_busqueda.textChanged.connect(self._refrescar_consulta)
+        self._cambiar_filtro_consulta("Todas")
+
+    def _cambiar_filtro_consulta(self, nombre_filtro):
+        self._consulta_filtro = nombre_filtro
+        for n, btn in self._botones_filtro.items():
+            btn.setChecked(n == nombre_filtro)
+        self._refrescar_consulta()
+
+    def _refrescar_consulta(self):
+        texto = self.entry_busqueda.text().strip().lower()
+        self.tree_consulta.clear()
+
+        colores_estado = {
+            "Aceptada": QColor("#28a745"),
+            "Rechazada": QColor("#dc3545"),
+            "Pendiente": QColor("#d39e00"),
+        }
+
+        mostradas = 0
+        for res in self._consulta_reservas:
+            estado = res["estado"]
+            if not self._coincide_filtro(estado):
+                continue
+            if texto and texto not in res["nombre"].lower():
+                continue
+
+            mesas_str = ", ".join(map(str, res["mesas"]))
+            estado_visible = "En espera" if estado == "Pendiente" else estado
+            item = QTreeWidgetItem(self.tree_consulta, [
+                res["nombre"], res["dia"], res["inicio_str"], res["fin_str"],
+                mesas_str, str(res["personas"]), estado_visible
+            ])
+            clave_color = "Rechazada" if estado.startswith("Rechazada") else estado
+            if clave_color in colores_estado:
+                item.setForeground(6, colores_estado[clave_color])
+            mostradas += 1
+
+        if mostradas == 0:
+            QTreeWidgetItem(self.tree_consulta, ["No se encontraron reservas", "", "", "", "", "", ""])
+
+        self.lbl_contador.setText(f"Mostrando {mostradas} de {len(self._consulta_reservas)} reservas")
 
     def mostrar_reservas_pendientes_vendedor(self):
         self._mostrar_lista_pendientes(self.mostrar_menu_vendedor)
@@ -1066,10 +1185,13 @@ class CoverOSApp(QMainWindow):
         form = QFormLayout()
         self.entry_new_vend_nombre = QLineEdit()
         self.entry_new_vend_pass = QLineEdit()
+        self.combo_new_vend_rol = QComboBox()
+        self.combo_new_vend_rol.addItems(["Vendedor", "Consultar reservas"])
         self.entry_new_vend_nombre.returnPressed.connect(self.crear_vendedor)
         self.entry_new_vend_pass.returnPressed.connect(self.crear_vendedor)
         form.addRow("Nombre:", self.entry_new_vend_nombre)
         form.addRow("Contraseña:", self.entry_new_vend_pass)
+        form.addRow("Rol:", self.combo_new_vend_rol)
         self.main_layout.addLayout(form)
 
         self.main_layout.addLayout(self._fila_botones(
@@ -1093,8 +1215,12 @@ class CoverOSApp(QMainWindow):
             QMessageBox.critical(self, "Error", f"Ya existe un vendedor con el nombre '{nombre}'.")
             return
 
-        db.crear_vendedor(nombre, contrasena)
-        QMessageBox.information(self, "Éxito", f"Vendedor '{nombre}' creado correctamente.")
+        rol = self.combo_new_vend_rol.currentText()
+        if rol == "Vendedor":
+            db.crear_vendedor(nombre, contrasena)
+        else:
+            db.crear_vendedor_con_rol(nombre, contrasena, rol)
+        QMessageBox.information(self, "Éxito", f"Usuario '{nombre}' creado correctamente con el rol '{rol}'.")
         self.mostrar_menu_admin()
 
     def mostrar_eliminar_vendedor(self):
@@ -1180,7 +1306,7 @@ def main():
     app.setStyleSheet(QSS_TEMA_OSCURO)
 
     ventana = CoverOSApp()
-    ventana.show()
+    ventana.showFullScreen()
     sys.exit(app.exec())
 
 

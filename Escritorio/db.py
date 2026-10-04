@@ -39,7 +39,7 @@ def _armar_reserva_con_mesas(cursor, filas_reservas):
 def obtener_reservas_por_dia(dia):
     conn = conectar()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM reservas WHERE dia = %s AND estado != 'Rechazada'", (dia,))
+    cursor.execute("SELECT * FROM reservas WHERE dia = %s AND estado = 'Aceptada'", (dia,))
     filas = cursor.fetchall()
     resultado = _armar_reserva_con_mesas(cursor, filas)
     conn.close()
@@ -72,15 +72,6 @@ def obtener_reservas_aceptadas():
     conn.close()
     return resultado
 
-def actualizar_estado_reserva(id_reserva, nuevo_estado):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE reservas SET estado = %s WHERE id = %s", (nuevo_estado, id_reserva))
-    conn.commit()
-    conn.close()
-
-# ==================== Vendedores ====================
-
 def obtener_contrasena_vendedor(nombre):
     conn = conectar()
     cursor = conn.cursor(dictionary=True)
@@ -93,27 +84,6 @@ def obtener_contrasena_vendedor(nombre):
 
 def existe_vendedor(nombre):
     return obtener_contrasena_vendedor(nombre) is not None
-
-def crear_vendedor(nombre, contrasena):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO vendedores (nombre, contrasena) VALUES (%s, %s)", (nombre, contrasena))
-    conn.commit()
-    conn.close()
-
-def eliminar_vendedor(nombre):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM vendedores WHERE nombre = %s", (nombre,))
-    conn.commit()
-    conn.close()
-
-def actualizar_contrasena_vendedor(nombre, nueva_contrasena):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE vendedores SET contrasena = %s WHERE nombre = %s", (nueva_contrasena, nombre))
-    conn.commit()
-    conn.close()
 
 def obtener_vendedores():
     conn = conectar()
@@ -168,3 +138,39 @@ def obtener_reservas_por_estado(estado):
     resultado = _armar_reserva_con_mesas(cursor, filas)
     conn.close()
     return resultado
+
+
+# ==================== Nuevas funciones ====================
+
+def obtener_todas_las_reservas():
+    conn = conectar()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM reservas")
+    filas = cursor.fetchall()
+    resultado = _armar_reserva_con_mesas(cursor, filas)
+    conn.close()
+    return resultado
+
+def obtener_rol_vendedor(nombre):
+    """Devuelve el rol del usuario. Si la columna 'rol' aun no existe, es 'Vendedor'."""
+    try:
+        conn = conectar()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT rol FROM vendedores WHERE nombre = %s", (nombre,))
+        fila = cursor.fetchone()
+        conn.close()
+    except mysql.connector.Error:
+        return "Vendedor"
+    if fila and fila.get("rol"):
+        return fila["rol"]
+    return "Vendedor"
+
+def crear_vendedor_con_rol(nombre, contrasena, rol):
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO vendedores (nombre, contrasena, rol) VALUES (%s, %s, %s)",
+        (nombre, contrasena, rol)
+    )
+    conn.commit()
+    conn.close()
