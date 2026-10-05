@@ -10,12 +10,12 @@ def conectar():
 
 # ==================== Reservas ====================
 
-def crear_reserva(nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, mesas, telefono=None, correo=""):
+def crear_reserva(nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, mesas, telefono=None, correo="", fecha=None):
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO reservas (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, telefono, correo, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')",
-        (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, telefono, correo)
+        "INSERT INTO reservas (nombre, personas, dia, fecha, inicio_str, fin_str, inicio_min, fin_min, telefono, correo, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')",
+        (nombre, personas, dia, fecha, inicio_str, fin_str, inicio_min, fin_min, telefono, correo)
     )
     id_reserva = cursor.lastrowid
     for m in mesas:
@@ -49,6 +49,16 @@ def obtener_reservas_por_nombre(nombre):
     conn = conectar()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM reservas WHERE nombre = %s", (nombre,))
+    filas = cursor.fetchall()
+    resultado = _armar_reserva_con_mesas(cursor, filas)
+    conn.close()
+    return resultado
+
+def obtener_reservas_por_fecha(fecha):
+    """Reservas ACEPTADAS de una fecha exacta (las que bloquean mesas)."""
+    conn = conectar()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM reservas WHERE fecha = %s AND estado = 'Aceptada'", (fecha,))
     filas = cursor.fetchall()
     resultado = _armar_reserva_con_mesas(cursor, filas)
     conn.close()

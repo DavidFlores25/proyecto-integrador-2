@@ -1,16 +1,21 @@
 import re
 import sys
 import threading
+import unicodedata
+from datetime import date, datetime
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QFormLayout, QLabel, QLineEdit, QComboBox, QPushButton, QSpinBox,
     QCheckBox, QListWidget, QTreeWidget, QTreeWidgetItem, QMessageBox,
-    QFrame, QHeaderView, QAbstractSpinBox
+    QFrame, QHeaderView, QAbstractSpinBox, QCalendarWidget, QScrollArea
 )
-from PySide6.QtCore import Qt, QObject, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QObject, Signal, QRegularExpression, QDate
+from PySide6.QtGui import QColor, QRegularExpressionValidator, QTextCharFormat
 import db
 import correo
+
+# Cuántos días hacia adelante se puede reservar (cámbialo si quieres)
+DIAS_ADELANTE = 60
 # ==================== Sistema de Reservas (GUI) - PySide6 ====================
 # Migración de tkinter/ttk a PySide6. Toda la lógica de negocio (validaciones,
 # reglas de conflicto de horario, estructura de datos de reservas) se mantiene
@@ -50,8 +55,34 @@ QLabel#lblError {
     color: #ff6b6b;
 }
 
+/* ---------- Campo de fecha ---------- */
+QPushButton#campoFecha {
+    background-color: #16213e;
+    border: 1px solid #2c2f4a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #e0e0e0;
+    text-align: left;
+}
+QPushButton#campoFecha:hover {
+    border: 1px solid #00d4ff;
+    background-color: #1c2745;
+}
+
+/* ---------- Calendario ---------- */
+QCalendarWidget QWidget {
+    background-color: #16213e;
+    color: #e0e0e0;
+}
+QCalendarWidget QAbstractItemView {
+    background-color: #16213e;
+    color: #e0e0e0;
+    selection-background-color: #007bff;
+    selection-color: #ffffff;
+}
+
 /* ---------- Campos de entrada ---------- */
-QLineEdit, QComboBox, QSpinBox {
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
     background-color: #16213e;
     border: 1px solid #2c2f4a;
     border-radius: 6px;
@@ -63,7 +94,7 @@ QComboBox {
     combobox-popup: 0;
 }
 
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
     border: 1px solid #00d4ff;
     background-color: #1c2745;
 }
@@ -246,8 +277,34 @@ QLabel#lblError {
     color: #dc3545;
 }
 
+/* ---------- Campo de fecha ---------- */
+QPushButton#campoFecha {
+    background-color: #f5f7fb;
+    border: 1px solid #ccd0da;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #1c2333;
+    text-align: left;
+}
+QPushButton#campoFecha:hover {
+    border: 1px solid #0d6efd;
+    background-color: #ffffff;
+}
+
+/* ---------- Calendario ---------- */
+QCalendarWidget QWidget {
+    background-color: #f5f7fb;
+    color: #1c2333;
+}
+QCalendarWidget QAbstractItemView {
+    background-color: #f5f7fb;
+    color: #1c2333;
+    selection-background-color: #0d6efd;
+    selection-color: #ffffff;
+}
+
 /* ---------- Campos de entrada ---------- */
-QLineEdit, QComboBox, QSpinBox {
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
     background-color: #f5f7fb;
     border: 1px solid #ccd0da;
     border-radius: 6px;
@@ -259,7 +316,7 @@ QComboBox {
     combobox-popup: 0;
 }
 
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
     border: 1px solid #0d6efd;
     background-color: #f4f8ff;
 }
@@ -412,6 +469,48 @@ QMessageBox QPushButton {
 """
 
 
+class SelectorFecha(QPushButton):
+    """Campo de fecha: al hacer clic en cualquier parte del campo se despliega el calendario."""
+
+    def __init__(self, parent, minimo, maximo, inicial):
+        super().__init__(parent)
+        self.setObjectName("campoFecha")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._fecha = inicial
+
+        self._calendario = QCalendarWidget(self)
+        self._calendario.setWindowFlags(Qt.WindowType.Popup)
+        self._calendario.setMinimumDate(minimo)
+        self._calendario.setMaximumDate(maximo)
+        self._calendario.setSelectedDate(inicial)
+        self._calendario.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
+        self._calendario.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
+        self._calendario.clicked.connect(self._elegir)
+        self._calendario.activated.connect(self._elegir)
+
+        self.clicked.connect(self._abrir)
+        self._actualizar_texto()
+
+    def date(self):
+        return self._fecha
+
+    def calendarWidget(self):
+        return self._calendario
+
+    def _actualizar_texto(self):
+        self.setText(self._fecha.toString("dd/MM/yyyy") + "   \u25be")
+
+    def _abrir(self):
+        self._calendario.setSelectedDate(self._fecha)
+        self._calendario.move(self.mapToGlobal(self.rect().bottomLeft()))
+        self._calendario.show()
+
+    def _elegir(self, fecha):
+        self._fecha = fecha
+        self._actualizar_texto()
+        self._calendario.hide()
+
+
 class NotificadorCorreo(QObject):
     """Permite avisar a la ventana, desde el hilo del correo, si el envío salió bien o mal."""
     terminado = Signal(bool, str)
@@ -492,6 +591,32 @@ class CoverOSApp(QMainWindow):
     def validar_dia(self, dia):
         dia = dia.strip().capitalize()
         return dia in self.dias_semana and dia != "Lunes"
+
+    # ---------- Fechas ----------
+    def _nombre_dia(self, fecha):
+        return self.dias_semana[fecha.weekday()]
+
+    def _texto_fecha(self, res, largo=False):
+        """Reservas nuevas: 'Mar 07/10/2026' (largo: 'Martes 07/10/2026'). Viejas sin fecha: solo el día."""
+        fecha = res.get("fecha")
+        if not fecha:
+            return res["dia"] if largo else f"{res['dia']} (sin fecha)"
+        nombre = self._nombre_dia(fecha)
+        if not largo:
+            nombre = nombre[:3]
+        return f"{nombre} {fecha.strftime('%d/%m/%Y')}"
+
+    def _esta_vencida(self, res):
+        fecha = res.get("fecha")
+        return bool(fecha) and fecha < date.today()
+
+    def _misma_fecha(self, a, b):
+        fa, fb = a.get("fecha"), b.get("fecha")
+        if fa and fb:
+            return fa == fb
+        if not fa and not fb:
+            return a["dia"] == b["dia"]
+        return False
 
     def hora_a_minutos(self, hora_str):
         hora_str = hora_str.strip().upper()
@@ -611,7 +736,10 @@ class CoverOSApp(QMainWindow):
         form.addRow("Correo electrónico:", self.entry_correo)
 
         self.entry_telefono = QLineEdit()
-        self.entry_telefono.setPlaceholderText("Opcional")
+        self.entry_telefono.setPlaceholderText("Opcional (solo números)")
+        self.entry_telefono.setMaxLength(15)
+        # Solo permite escribir dígitos (las letras y símbolos no se pueden teclear ni pegar)
+        self.entry_telefono.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9]*")))
         form.addRow("Teléfono (opcional):", self.entry_telefono)
 
         # Personas
@@ -621,10 +749,23 @@ class CoverOSApp(QMainWindow):
         self.spin_personas.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         form.addRow(f"Número de personas (máx {self.limite_personas}):", self.spin_personas)
 
-        # Día
-        self.combo_dia = QComboBox()
-        self.combo_dia.addItems(self.dias_validos)
-        form.addRow("Día de la reserva:", self.combo_dia)
+        # Fecha (calendario)
+        hoy = QDate.currentDate()
+        self.date_fecha = SelectorFecha(
+            self, hoy, hoy.addDays(DIAS_ADELANTE),
+            hoy.addDays(1) if hoy.dayOfWeek() == 1 else hoy
+        )
+
+        # Los lunes (cerrado) se ven en gris en el calendario
+        formato_cerrado = QTextCharFormat()
+        formato_cerrado.setForeground(QColor("#888888"))
+        calendario = self.date_fecha.calendarWidget()
+        for i in range(DIAS_ADELANTE + 1):
+            d = hoy.addDays(i)
+            if d.dayOfWeek() == 1:
+                calendario.setDateTextFormat(d, formato_cerrado)
+
+        form.addRow("Fecha de la reserva (lunes cerrado):", self.date_fecha)
 
         # Horario Inicio
         hora_inicio_widget = QWidget()
@@ -692,7 +833,9 @@ class CoverOSApp(QMainWindow):
     def verificar_mesas(self):
         nombre = self.entry_nombre.text().strip()
         num_personas = str(self.spin_personas.value())
-        dia = self.combo_dia.currentText().strip()
+        qfecha = self.date_fecha.date()
+        fecha = date(qfecha.year(), qfecha.month(), qfecha.day())
+        dia = self.dias_semana[fecha.weekday()]
 
         if not self.validar_nombre(nombre):
             QMessageBox.critical(self, "Error", "Nombre inválido. Solo letras y mínimo 2 caracteres.")
@@ -714,8 +857,14 @@ class CoverOSApp(QMainWindow):
         if int(num_personas) > self.limite_personas:
             QMessageBox.critical(self, "Error", f"No puede superar el límite de {self.limite_personas} personas.")
             return
+        if fecha < date.today():
+            QMessageBox.critical(self, "Error", "No se puede reservar en una fecha que ya pasó.")
+            return
+        if (fecha - date.today()).days > DIAS_ADELANTE:
+            QMessageBox.critical(self, "Error", f"Solo se puede reservar hasta {DIAS_ADELANTE} días hacia adelante.")
+            return
         if not self.validar_dia(dia):
-            QMessageBox.critical(self, "Error", "Día inválido o restaurante cerrado (Lunes).")
+            QMessageBox.critical(self, "Error", "El restaurante está cerrado los lunes. Elija otra fecha.")
             return
 
         h_i = self.combo_h_inicio.currentText()
@@ -747,6 +896,11 @@ class CoverOSApp(QMainWindow):
         if inicio_min >= fin_min:
             QMessageBox.critical(self, "Error", "La hora de fin debe ser mayor que la de inicio.")
             return
+        if fecha == date.today():
+            ahora = datetime.now()
+            if inicio_min <= ahora.hour * 60 + ahora.minute:
+                QMessageBox.critical(self, "Error", "Para hoy, la hora de inicio debe ser posterior a la hora actual.")
+                return
 
         # Guardar valores para usar al registrar
         self.reserva_temp = {
@@ -755,6 +909,7 @@ class CoverOSApp(QMainWindow):
             "telefono": telefono if telefono else None,
             "personas": int(num_personas),
             "dia": dia,
+            "fecha": fecha,
             "inicio_str": hora_inicio_str,
             "fin_str": hora_fin_str,
             "inicio_min": inicio_min,
@@ -771,7 +926,7 @@ class CoverOSApp(QMainWindow):
         filas_mesas = QVBoxLayout()
         self.frame_mesas.addLayout(filas_mesas)
 
-        reservas_dia = db.obtener_reservas_por_dia(dia)
+        reservas_dia = db.obtener_reservas_por_fecha(fecha)
 
         self.mesas_validas = []
         col = 0
@@ -829,10 +984,58 @@ class CoverOSApp(QMainWindow):
             self.reserva_temp["fin_min"],
             mesas_seleccionadas,
             self.reserva_temp["telefono"],
-            self.reserva_temp["correo"]
+            self.reserva_temp["correo"],
+            self.reserva_temp["fecha"]
         )
         QMessageBox.information(self, "Éxito", "Reserva solicitada y pendiente de aprobación por vendedor.")
         self.mostrar_menu_cliente()
+
+    # ---------- Ver estado de mi reserva ----------
+    def _normalizar(self, texto):
+        """Minúsculas y sin tildes, para buscar 'perez' y encontrar 'Pérez'."""
+        texto = unicodedata.normalize("NFD", str(texto).lower())
+        return "".join(c for c in texto if unicodedata.category(c) != "Mn")
+
+    def _ocultar_correo(self, correo):
+        """juanperez@gmail.com -> juan***@gmail.com (nunca muestra más de la mitad del nombre)."""
+        correo = (correo or "").strip()
+        if "@" not in correo:
+            return ""
+        local, dominio = correo.rsplit("@", 1)
+        visibles = min(4, max(1, len(local) // 2))
+        return f"{local[:visibles]}***@{dominio}"
+
+    def _ocultar_telefono(self, telefono):
+        """88887777 -> ****7777"""
+        digitos = re.sub(r"\D", "", telefono or "")
+        if not digitos:
+            return ""
+        return "****" + digitos[-4:] if len(digitos) > 4 else "****"
+
+    def _estado_amigable(self, res):
+        """Devuelve (texto para el cliente, color)."""
+        estado = res["estado"]
+        pasada = self._esta_vencida(res)
+        if estado == "Aceptada":
+            if pasada:
+                return "Finalizada", "#888888"
+            return "Confirmada. ¡Te esperamos!", "#28a745"
+        if estado == "Pendiente":
+            if pasada:
+                return "Vencida: la fecha pasó sin ser aprobada", "#888888"
+            return "En espera de aprobación", "#d39e00"
+        if "conflicto" in estado:
+            return "Sin disponibilidad en ese horario. Puede reservar otro.", "#dc3545"
+        return "Rechazada", "#dc3545"
+
+    def _clave_busqueda(self, res):
+        """Próximas primero (la más cercana arriba), luego las pasadas y al final las viejas sin fecha."""
+        fecha = res.get("fecha")
+        if not fecha:
+            return (2, 0, res["inicio_min"], res["id"])
+        if fecha >= date.today():
+            return (0, fecha.toordinal(), res["inicio_min"], res["id"])
+        return (1, -fecha.toordinal(), res["inicio_min"], res["id"])
 
     def mostrar_consulta_reserva(self):
         self.limpiar_frame()
@@ -843,37 +1046,60 @@ class CoverOSApp(QMainWindow):
         form = QHBoxLayout()
         self.entry_consulta = QLineEdit()
         self.entry_consulta.setMinimumWidth(260)
+        self.entry_consulta.setPlaceholderText("Ej: Juan")
         self.entry_consulta.returnPressed.connect(self.buscar_reserva)
         form.addStretch()
-        form.addWidget(QLabel("Ingrese el nombre de su reserva:"))
+        form.addWidget(QLabel("Nombre de la reserva:"))
         form.addWidget(self.entry_consulta)
         form.addWidget(self._boton("Buscar", self.buscar_reserva, "btnAccent"))
         form.addStretch()
         self.main_layout.addLayout(form)
 
-        # Resultado
-        self.resultado_frame = QVBoxLayout()
-        self.main_layout.addLayout(self.resultado_frame)
+        # Resultados con scroll
+        contenedor = QWidget()
+        self.resultado_frame = QVBoxLayout(contenedor)
+        self.resultado_frame.setContentsMargins(0, 0, 0, 0)
+        self.resultado_frame.setSpacing(10)
+        self.resultado_frame.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setMinimumHeight(260)
+        scroll.setWidget(contenedor)
+        self.main_layout.addWidget(scroll, 1)
 
         self.main_layout.addLayout(self._fila_botones(
             [self._boton(" Volver", self.mostrar_menu_cliente)]
         ))
-        self.main_layout.addStretch()
 
     def buscar_reserva(self):
-        nombre = self.entry_consulta.text().strip()
-
+        texto = self.entry_consulta.text().strip()
         self._limpiar_layout(self.resultado_frame)
 
-        resultados = db.obtener_reservas_por_nombre(nombre)
+        if len(texto) < 2:
+            self.resultado_frame.addWidget(self._label("Escriba el nombre de la reserva (mínimo 2 letras).", "lblWarning"))
+            return
+
+        buscado = self._normalizar(texto)
+        resultados = [r for r in db.obtener_todas_las_reservas() if buscado in self._normalizar(r["nombre"])]
+        resultados.sort(key=self._clave_busqueda)
 
         if not resultados:
             self.resultado_frame.addWidget(self._label("No se encontró ninguna reserva con ese nombre.", "lblError"))
             return
 
+        n = len(resultados)
+        self.resultado_frame.addWidget(QLabel("Se encontró 1 reserva:" if n == 1 else f"Se encontraron {n} reservas:"))
+
         for res in resultados:
             mesas_str = ", ".join(map(str, res["mesas"]))
-            estado_color = "#28a745" if res["estado"] == "Aceptada" else ("#ffc107" if res["estado"] == "Pendiente" else "#dc3545")
+            estado_texto, estado_color = self._estado_amigable(res)
+
+            correo_oculto = self._ocultar_correo(res.get("correo"))
+            telefono_oculto = self._ocultar_telefono(res.get("telefono"))
+            contacto = f"Correo: {correo_oculto}" if correo_oculto else "Correo: no registrado"
+            if telefono_oculto:
+                contacto += f"  |  Tel: {telefono_oculto}"
 
             card = QFrame()
             card.setObjectName("card")
@@ -883,14 +1109,17 @@ class CoverOSApp(QMainWindow):
 
             lbl_nombre = QLabel(f"Reserva: {res['nombre']}")
             lbl_nombre.setObjectName("cardTitulo")
-            lbl_horario = QLabel(f"Día: {res['dia']}  |  Horario: {res['inicio_str']} a {res['fin_str']}")
+            lbl_contacto = QLabel(contacto)
+            lbl_contacto.setObjectName("cardTexto")
+            lbl_horario = QLabel(f"Fecha: {self._texto_fecha(res, True)}  |  Horario: {res['inicio_str']} a {res['fin_str']}")
             lbl_horario.setObjectName("cardTexto")
             lbl_mesas = QLabel(f"Mesas: {mesas_str}  |  Personas: {res['personas']}")
             lbl_mesas.setObjectName("cardTexto")
-            lbl_estado = QLabel(f"Estado: {res['estado']}")
+            lbl_estado = QLabel(f"\u25cf {estado_texto}")
             lbl_estado.setStyleSheet(f"color: {estado_color}; font-size: 12pt; font-weight: bold;")
 
             card_layout.addWidget(lbl_nombre)
+            card_layout.addWidget(lbl_contacto)
             card_layout.addWidget(lbl_horario)
             card_layout.addWidget(lbl_mesas)
             card_layout.addWidget(lbl_estado)
@@ -966,12 +1195,16 @@ class CoverOSApp(QMainWindow):
 
     def _clave_cronologica(self, res):
         """Orden: día de la semana (Martes -> Domingo) y luego hora de inicio."""
+        fecha = res.get("fecha")
+        if fecha:
+            return (0, fecha.toordinal(), res["inicio_min"], res["id"])
+        # Reservas viejas sin fecha: al final, ordenadas por día de la semana
         dia = str(res["dia"]).strip().capitalize()
         try:
             idx_dia = self.dias_semana.index(dia)
         except ValueError:
             idx_dia = len(self.dias_semana)
-        return (idx_dia, res["inicio_min"], res["id"])
+        return (1, idx_dia, res["inicio_min"], res["id"])
 
     def _coincide_filtro(self, estado):
         f = self._consulta_filtro
@@ -985,8 +1218,10 @@ class CoverOSApp(QMainWindow):
             return estado == "Pendiente"
         return True
 
-    def _mostrar_lista_pendientes(self, callback_volver, texto_volver=" Volver"):
+    def _mostrar_lista_pendientes(self, callback_volver, texto_volver=" Volver", completo=False):
+        """completo=True (solo admin): muestra correo y teléfono completos. Si no, el correo va parcial y sin teléfono."""
         self.limpiar_frame()
+        self._consulta_completo = completo
 
         self.main_layout.addWidget(self._label("Consultar Reservas", "lblHeader", Qt.AlignmentFlag.AlignHCenter))
         self.main_layout.addSpacing(6)
@@ -1018,7 +1253,10 @@ class CoverOSApp(QMainWindow):
         self.main_layout.addLayout(fila_filtros)
 
         # ---------- Tabla ----------
-        columns = ("Nombre", "Día", "Inicio", "Fin", "Mesas", "Personas", "Estado")
+        if completo:
+            columns = ("Nombre", "Correo", "Teléfono", "Fecha", "Inicio", "Fin", "Mesas", "Personas", "Estado")
+        else:
+            columns = ("Nombre", "Correo", "Fecha", "Inicio", "Fin", "Mesas", "Personas", "Estado")
         self.tree_consulta = QTreeWidget()
         self.tree_consulta.setHeaderLabels(columns)
         self.tree_consulta.setRootIsDecorated(False)
@@ -1063,18 +1301,31 @@ class CoverOSApp(QMainWindow):
                 continue
 
             mesas_str = ", ".join(map(str, res["mesas"]))
-            estado_visible = "En espera" if estado == "Pendiente" else estado
-            item = QTreeWidgetItem(self.tree_consulta, [
-                res["nombre"], res["dia"], res["inicio_str"], res["fin_str"],
-                mesas_str, str(res["personas"]), estado_visible
-            ])
+            if estado == "Pendiente":
+                estado_visible = "En espera (vencida)" if self._esta_vencida(res) else "En espera"
+            else:
+                estado_visible = estado
+            correo_res = (res.get("correo") or "").strip()
+            if self._consulta_completo:
+                columnas_fila = [
+                    res["nombre"], correo_res or "no registrado", res.get("telefono") or "-",
+                    self._texto_fecha(res), res["inicio_str"], res["fin_str"],
+                    mesas_str, str(res["personas"]), estado_visible
+                ]
+            else:
+                columnas_fila = [
+                    res["nombre"], self._ocultar_correo(correo_res) or "no registrado",
+                    self._texto_fecha(res), res["inicio_str"], res["fin_str"],
+                    mesas_str, str(res["personas"]), estado_visible
+                ]
+            item = QTreeWidgetItem(self.tree_consulta, columnas_fila)
             clave_color = "Rechazada" if estado.startswith("Rechazada") else estado
             if clave_color in colores_estado:
-                item.setForeground(6, colores_estado[clave_color])
+                item.setForeground(len(columnas_fila) - 1, colores_estado[clave_color])
             mostradas += 1
 
         if mostradas == 0:
-            QTreeWidgetItem(self.tree_consulta, ["No se encontraron reservas", "", "", "", "", "", ""])
+            QTreeWidgetItem(self.tree_consulta, ["No se encontraron reservas"])
 
         self.lbl_contador.setText(f"Mostrando {mostradas} de {len(self._consulta_reservas)} reservas")
 
@@ -1111,7 +1362,8 @@ class CoverOSApp(QMainWindow):
         indices = []
         for idx, res in enumerate(reservas_pendientes):
             mesas_str = ", ".join(map(str, res["mesas"]))
-            listbox.addItem(f"{idx+1}. {res['nombre']} | {res['dia']} {res['inicio_str']}-{res['fin_str']} | Mesas: {mesas_str}")
+            marca = " (VENCIDA)" if self._esta_vencida(res) else ""
+            listbox.addItem(f"{idx+1}. {res['nombre']} | {self._texto_fecha(res)} {res['inicio_str']}-{res['fin_str']} | Mesas: {mesas_str}{marca}")
             indices.append(idx)
 
         if es_admin:
@@ -1141,9 +1393,11 @@ class CoverOSApp(QMainWindow):
         if not destino:
             return False
 
+        fecha_texto = self._texto_fecha(res, True)
+
         def tarea():
             ok, mensaje = correo.enviar_correo_reserva_aceptada(
-                destino, res["nombre"], res["dia"], res["inicio_str"],
+                destino, res["nombre"], fecha_texto, res["inicio_str"],
                 res["fin_str"], res["mesas"], res["personas"]
             )
             self.notificador.terminado.emit(ok, mensaje)
@@ -1171,11 +1425,17 @@ class CoverOSApp(QMainWindow):
         idx = indices[seleccion]
         res = reservas_pendientes[idx]
 
+        # No se puede aceptar una reserva cuya fecha ya pasó
+        if accion == "aceptar" and self._esta_vencida(res):
+            QMessageBox.warning(self, "Reserva vencida",
+                                "La fecha de esta reserva ya pasó, no se puede aceptar. Puede rechazarla.")
+            return
+
         # Verificar conflicto automático contra reservas ya aceptadas
         reservas_aceptadas = db.obtener_reservas_por_estado("Aceptada")
         conflicto = False
         for acept in reservas_aceptadas:
-            if res["dia"] == acept["dia"]:
+            if self._misma_fecha(res, acept):
                 for m in res["mesas"]:
                     if m in acept["mesas"]:
                         if not (res["fin_min"] <= acept["inicio_min"] or res["inicio_min"] >= acept["fin_min"]):
@@ -1240,6 +1500,7 @@ class CoverOSApp(QMainWindow):
 
         col = QVBoxLayout()
         col.setSpacing(8)
+        col.addWidget(self._boton(" Consultar Reservas", self.mostrar_consulta_admin, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
         col.addWidget(self._boton(" Gestionar Reservas Pendientes", self.mostrar_gestion_reservas_admin, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
         col.addWidget(self._boton(" Crear Vendedor", self.mostrar_crear_vendedor, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
         col.addWidget(self._boton(" Eliminar Vendedor", self.mostrar_eliminar_vendedor, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -1248,6 +1509,9 @@ class CoverOSApp(QMainWindow):
         col.addWidget(self._boton(" Cerrar Sesión", self.mostrar_menu_principal, min_width=300), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.addLayout(col)
         self.main_layout.addStretch()
+
+    def mostrar_consulta_admin(self):
+        self._mostrar_lista_pendientes(self.mostrar_menu_admin, completo=True)
 
     def mostrar_crear_vendedor(self):
         self.limpiar_frame()

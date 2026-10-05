@@ -9,7 +9,7 @@ def correo_configurado():
     return bool(config.CORREO_REMITENTE.strip()) and bool(config.CLAVE_APLICACION.strip())
 
 
-def enviar_correo_reserva_aceptada(destino, nombre, dia, inicio, fin, mesas, personas):
+def enviar_correo_reserva_aceptada(destino, nombre, fecha_texto, inicio, fin, mesas, personas):
     """Envía la confirmación al cliente. Devuelve (ok, mensaje). Nunca lanza excepciones."""
     if not correo_configurado():
         return False, "El correo del restaurante aún no está configurado (archivo config.py)."
@@ -24,7 +24,7 @@ def enviar_correo_reserva_aceptada(destino, nombre, dia, inicio, fin, mesas, per
         f"Hola {nombre},\n\n"
         f"Tu reserva en {config.NOMBRE_RESTAURANTE} fue ACEPTADA.\n\n"
         f"Detalles de tu reserva:\n"
-        f"  - Día: {dia}\n"
+        f"  - Fecha: {fecha_texto}\n"
         f"  - Horario: {inicio} a {fin}\n"
         f"  - Personas: {personas}\n"
         f"  - Mesas: {mesas_str}\n\n"
