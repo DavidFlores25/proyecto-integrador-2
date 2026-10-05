@@ -1,13 +1,16 @@
+import re
 import sys
+import threading
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QFormLayout, QLabel, QLineEdit, QComboBox, QPushButton, QSpinBox,
     QCheckBox, QListWidget, QTreeWidget, QTreeWidgetItem, QMessageBox,
     QFrame, QHeaderView, QAbstractSpinBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtGui import QColor
 import db
+import correo
 # ==================== Sistema de Reservas (GUI) - PySide6 ====================
 # Migración de tkinter/ttk a PySide6. Toda la lógica de negocio (validaciones,
 # reglas de conflicto de horario, estructura de datos de reservas) se mantiene
@@ -409,6 +412,11 @@ QMessageBox QPushButton {
 """
 
 
+class NotificadorCorreo(QObject):
+    """Permite avisar a la ventana, desde el hilo del correo, si el envío salió bien o mal."""
+    terminado = Signal(bool, str)
+
+
 class CoverOSApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -432,6 +440,9 @@ class CoverOSApp(QMainWindow):
 
         self.vendedor_actual = ""
         self.rol_actual = "Vendedor"
+
+        self.notificador = NotificadorCorreo()
+        self.notificador.terminado.connect(self._al_terminar_envio_correo)
 
         self.mostrar_menu_principal()
 
@@ -459,6 +470,17 @@ class CoverOSApp(QMainWindow):
 
     def validar_nombre(self, nombre):
         return nombre.replace(" ", "").isalpha() and len(nombre) > 1
+
+    def validar_correo(self, texto):
+        return re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", texto) is not None
+
+    def validar_telefono(self, texto):
+        """Opcional: vacío es válido. Si se escribe, solo dígitos, espacios, + y -, entre 8 y 15 dígitos."""
+        if not texto:
+            return True
+        if not re.fullmatch(r"[0-9+\-\s]+", texto):
+            return False
+        return 8 <= len(re.sub(r"\D", "", texto)) <= 15
 
     def validar_numero_personas(self, num):
         try:
@@ -583,6 +605,15 @@ class CoverOSApp(QMainWindow):
         self.entry_nombre.returnPressed.connect(self.verificar_mesas)
         form.addRow("Nombre de la reserva:", self.entry_nombre)
 
+        # Correo (obligatorio) y teléfono (opcional)
+        self.entry_correo = QLineEdit()
+        self.entry_correo.setPlaceholderText("ejemplo@gmail.com")
+        form.addRow("Correo electrónico:", self.entry_correo)
+
+        self.entry_telefono = QLineEdit()
+        self.entry_telefono.setPlaceholderText("Opcional")
+        form.addRow("Teléfono (opcional):", self.entry_telefono)
+
         # Personas
         self.spin_personas = QSpinBox()
         self.spin_personas.setRange(1, self.limite_personas)
@@ -666,6 +697,17 @@ class CoverOSApp(QMainWindow):
         if not self.validar_nombre(nombre):
             QMessageBox.critical(self, "Error", "Nombre inválido. Solo letras y mínimo 2 caracteres.")
             return
+        correo_cliente = self.entry_correo.text().strip()
+        telefono = self.entry_telefono.text().strip()
+        if not correo_cliente:
+            QMessageBox.critical(self, "Error", "El correo electrónico es obligatorio.")
+            return
+        if not self.validar_correo(correo_cliente):
+            QMessageBox.critical(self, "Error", "Correo inválido. Use el formato ejemplo@gmail.com")
+            return
+        if not self.validar_telefono(telefono):
+            QMessageBox.critical(self, "Error", "Teléfono inválido. Use solo números (mínimo 8 dígitos).")
+            return
         if not self.validar_numero_personas(num_personas):
             QMessageBox.critical(self, "Error", "Número de personas inválido.")
             return
@@ -709,6 +751,8 @@ class CoverOSApp(QMainWindow):
         # Guardar valores para usar al registrar
         self.reserva_temp = {
             "nombre": nombre,
+            "correo": correo_cliente,
+            "telefono": telefono if telefono else None,
             "personas": int(num_personas),
             "dia": dia,
             "inicio_str": hora_inicio_str,
@@ -783,7 +827,9 @@ class CoverOSApp(QMainWindow):
             self.reserva_temp["fin_str"],
             self.reserva_temp["inicio_min"],
             self.reserva_temp["fin_min"],
-            mesas_seleccionadas
+            mesas_seleccionadas,
+            self.reserva_temp["telefono"],
+            self.reserva_temp["correo"]
         )
         QMessageBox.information(self, "Éxito", "Reserva solicitada y pendiente de aprobación por vendedor.")
         self.mostrar_menu_cliente()
@@ -1089,6 +1135,29 @@ class CoverOSApp(QMainWindow):
     def mostrar_gestion_reservas_admin(self):
         self._mostrar_gestion_reservas(self.mostrar_menu_admin, es_admin=True)
 
+    def _enviar_correo_aceptada(self, res):
+        """Lanza el envío en un hilo aparte. Devuelve False si la reserva no tiene correo."""
+        destino = (res.get("correo") or "").strip()
+        if not destino:
+            return False
+
+        def tarea():
+            ok, mensaje = correo.enviar_correo_reserva_aceptada(
+                destino, res["nombre"], res["dia"], res["inicio_str"],
+                res["fin_str"], res["mesas"], res["personas"]
+            )
+            self.notificador.terminado.emit(ok, mensaje)
+
+        threading.Thread(target=tarea, daemon=True).start()
+        return True
+
+    def _al_terminar_envio_correo(self, ok, mensaje):
+        if not ok:
+            QMessageBox.warning(
+                self, "Correo no enviado",
+                f"La reserva se aceptó, pero no se pudo enviar el correo al cliente.\n\n{mensaje}"
+            )
+
     def _procesar_reserva(self, accion, es_admin=False):
         listbox = self.admin_gestion_listbox if es_admin else self.gestion_listbox
         indices = self.admin_gestion_indices if es_admin else self.gestion_indices
@@ -1118,7 +1187,12 @@ class CoverOSApp(QMainWindow):
             QMessageBox.information(self, "Conflicto", "Reserva rechazada automáticamente por conflicto de horario.")
         elif accion == "aceptar":
             db.actualizar_estado_reserva(res["id"], "Aceptada")
-            QMessageBox.information(self, "Éxito", "Reserva aceptada correctamente.")
+            texto = "Reserva aceptada correctamente."
+            if self._enviar_correo_aceptada(res):
+                texto += "\nSe está enviando el correo de confirmación al cliente."
+            else:
+                texto += "\nEsta reserva no tiene correo registrado, no se envió confirmación."
+            QMessageBox.information(self, "Éxito", texto)
         else:
             db.actualizar_estado_reserva(res["id"], "Rechazada")
             QMessageBox.information(self, "Éxito", "Reserva rechazada correctamente.")

@@ -1,0 +1,7 @@
+# Archivos con claves y contraseñas: NUNCA subir a GitHub
+config.py
+.env
+
+# Archivos generados por Python
+__pycache__/
+*.pyc

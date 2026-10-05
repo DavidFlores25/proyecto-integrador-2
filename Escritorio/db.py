@@ -10,12 +10,12 @@ def conectar():
 
 # ==================== Reservas ====================
 
-def crear_reserva(nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, mesas):
+def crear_reserva(nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, mesas, telefono=None, correo=""):
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO reservas (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, 'Pendiente')",
-        (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min)
+        "INSERT INTO reservas (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, telefono, correo, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')",
+        (nombre, personas, dia, inicio_str, fin_str, inicio_min, fin_min, telefono, correo)
     )
     id_reserva = cursor.lastrowid
     for m in mesas:
