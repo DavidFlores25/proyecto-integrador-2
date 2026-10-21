@@ -12,17 +12,20 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="css/reserva.css">
+<script src="javascript/reserva.js" defer></script>
 </head>
 <body>
 
 
 <nav>
-<img src="Assets/" alt="Logo restaurante">
+<img src="Assets/icons/1-favicon.png" alt="Logo restaurante">
 <div>
   <a href="#inicio">Inicio</a>
   <a href="#menu">Menu</a>
+  <a href="#reservar">Reservar</a>
   <a href="#ubicacion">Ubicacion</a>
-  <a href="">contactos</a>
+
 </div>
 </nav>
  <div class="carrusel" id="inicio">
@@ -55,19 +58,7 @@
   <span class="oscuro reveal"> porque comer bien es también una forma de amar.</span>
 </p>
 
-<main class="vot">
-<section class="vota" >
-<img src="assets/img/cmoida 2.avif" alt="comida basica">
 
-</section>
-
-<article class="votaa">
-<p style="margin-top: 9%;">Nuestra historia comienza en el corazón de Nicaragua, entre volcanes, lagos y tradiciónes. Hoy, honramos esa herencia sirviendo Nicaragua en su forma más refinada, cada plato es un homenaje a nuestra raices.</p>
-
-
-
-</article>
-</main> 
 
 
 <div class="servicios">
@@ -103,7 +94,7 @@
     <header class="mn-head mn-anim">
       <span class="mn-kicker">Al carbón desde El Viejo</span>
       <h2>Nuestro <em>menú</em></h2>
-      <p>Carne a la parrilla, sabor nica de verdad y guaro del bueno. Todo hecho al momento.</p>
+      <p>Carne a la parrilla, sabor nica de verdad y Todo hecho al momento.</p>
     </header>
 
     <div class="mn-tabs mn-anim" role="tablist">
@@ -224,23 +215,92 @@
     </div>
 
     <footer class="mn-pie mn-anim">
-      <p>Precios en córdobas (C$). Todas las parrillas se sirven con gallopinto, maduro y ensalada de repollo.</p>
+      <p>Precios en córdobas (C$). Todas las parrillas se sirven con diferentes tipo de guarniciones.</p>
     </footer>
 
   </div>
 </section>
 
+<section class="reserva-web" id="reservar">
+  <div class="rs-wrap">
+    <header class="rs-head">
+      <span class="rs-kicker">Sin llamadas, sin filas</span>
+      <h2>Reserva tu <em>mesa</em></h2>
+      <p>Elige la fecha, el horario y tus mesas, Te confirmamos por correo cuando tu reserva sea aprobada. Cerramos los lunes.</p>
+    </header>
 
+    <div class="rs-grid">
+      <form class="rs-card" id="rs-form" novalidate>
+        <h3>Solicitar reserva</h3>
+        <div class="rs-campos">
+          <div class="rs-campo rs-campo--full">
+            <label for="rs-nombre">Nombre de la reserva</label>
+            <input id="rs-nombre" type="text" maxlength="100" autocomplete="name">
+          </div>
+          <div class="rs-campo">
+            <label for="rs-correo">Correo electrónico</label>
+            <input id="rs-correo" type="email" maxlength="100" placeholder="ejemplo@gmail.com" autocomplete="email">
+          </div>
+          <div class="rs-campo">
+            <label for="rs-telefono">Teléfono (opcional)</label>
+            <input id="rs-telefono" type="tel" inputmode="numeric" maxlength="15" placeholder="Solo números" autocomplete="tel">
+          </div>
+          <div class="rs-campo">
+            <label for="rs-personas">Personas (máx. 10)</label>
+            <input id="rs-personas" type="number" min="1" max="10" value="2">
+          </div>
+          <div class="rs-campo">
+            <label for="rs-fecha">Fecha (lunes cerrado)</label>
+            <input id="rs-fecha" type="date">
+          </div>
+          <div class="rs-campo">
+            <label for="rs-inicio">Hora de inicio</label>
+            <select id="rs-inicio"></select>
+          </div>
+          <div class="rs-campo">
+            <label for="rs-fin">Hora de fin</label>
+            <select id="rs-fin"></select>
+          </div>
+        </div>
+
+        <div class="rs-acciones">
+          <button type="button" class="rs-btn" id="rs-ver-mesas">Ver mesas disponibles</button>
+        </div>
+        <div class="rs-mesas" id="rs-mesas" role="group" aria-label="Mesas"></div>
+        <div class="rs-acciones">
+          <button type="submit" class="rs-btn rs-btn--primario" id="rs-enviar" disabled>Solicitar reserva</button>
+        </div>
+        <p class="rs-msg" id="rs-msg" role="status" aria-live="polite"></p>
+      </form>
+
+<aside class="rs-cardd">
+  <h3 style="color:yellow">Cómo funciona</h3>
+  <ol class="rs-pasos">
+    <li><strong>Elige fecha y horario</strong>Revisa qué mesas están libres y escoge las tuyas.</li>
+    <li><strong>Envía tu solicitud</strong>Llega a nuestro equipo como pendiente.</li>
+    <li><strong>Te confirmamos por correo</strong>Cuando la aprobemos, te llega el aviso a tu email.</li>
+  </ol>
+  <p class="rs-datos">
+    <i class="fa-solid fa-clock"></i>Martes a domingo, 8:00 AM - 11:00 PM<br>
+    <i class="fa-solid fa-ban"></i>Lunes cerrado<br>
+    <i class="fa-solid fa-square-phone"></i>8959 2743<br>
+    <i class="fa-solid fa-envelope"></i>Don bigote@gmail.com
+  </p>
+</aside>
+    </div>
+  </div>
+</section>
 
 <main class="contactos" id="ubicacion">
 <section class="contac">
-<h1>Nuestra ubicacion</h1>
+<h1 style="  color: #3E2415; text-shadow: 3px 3px 0 #E8D5B5,6px 6px 0 rgba(139, 90, 43, 0.4);letter-spacing: 1px;"
+                  >Nuestra ubicacion</h1>
 <p>La ubicacion centrica de buena zona del municipio, teniando localidades turistica cerca facilita el acceso tanto a los vecinos como a los visitantes, y te permite disfrutar 
 de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p><br>
 
 <h4><i class="fa-solid fa-location-dot"></i>De las oficinas de claro el viejo, una calle al sur y 50 mts al oeste.</h4><br>
-<h4><i class="fa-solid fa-square-phone"></i>1010 2343</h4><br>
-<h4><i class="fa-solid fa-envelope"></i>proximo@gmail.com</h4>
+<h4><i class="fa-solid fa-square-phone"></i>8959 2743</h4><br>
+<h4><i class="fa-solid fa-envelope"></i>Don bigote@gmail.com</h4>
 </section>
 
 
@@ -252,12 +312,15 @@ de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p>
 <div class="sobre">
 
 <div class="so">
-<h2 style="color:rgb(255, 145, 0)">Sobre nostros</h2>
-<p>En Don Bigote nos enorgullece servir una gran variedad de platillos típicos nicaragüenses recién hechos, jugosas carnes asadas, tajadas, gallopinto y especialidades de la casa. Combinamos los ingredientes más frescos y la auténtica sazón tradicional preparada todos los días en nuestra cocina, ubicados en pleno centro de El Viejo, Chinandega.</p>
+<h2 style="color:#FFFDF9">Sobre nostros</h2>
+<p>En Don Bigote nos enorgullece servir una gran variedad de platillos típicos nicaragüenses recién hechos, jugosas carnes asadas, tajadas, gallopinto y especialidades de la casa. Combinamos los ingredientes más frescos y la auténtica sazón tradicional preparada todos los días en nuestra cocina, <br> ubicados en pleno centro de El Viejo, Chinandega.</p>
 </div>
 
+
+
+
 <div class="soo">
-<h2 style="color: rgb(255, 145, 0)"> horarios abiertos</h2>
+<h2 style="color: #FFFDF9"> horarios abiertos</h2>
 <p>
   Lunes cerrado <br>
   Martes: 8:00 AM - 11:00 PM<br>
@@ -268,16 +331,6 @@ de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p>
   Domingo: 8:00 AM - 11:00 PM
 </p>
 </div>
-
-<div class="sooo">
-<h2 style="color: rgb(255, 145, 0);">Fotos comida </h2>
-<img src="Assets/img/comida 1.avif" alt="comida">
-</div>
-
-
-
-
-
 </div>
 
 
