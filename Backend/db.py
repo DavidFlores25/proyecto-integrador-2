@@ -2,16 +2,23 @@ import uuid
 import unicodedata
 from datetime import date, timedelta
 
+import os
+
 import mysql.connector
 
 
 def conectar():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="restaurante"
+    # En la nube se leen de variables de entorno; en tu PC usa los valores de siempre.
+    datos = dict(
+        host=os.environ.get("DB_HOST", "localhost"),
+        user=os.environ.get("DB_USER", "root"),
+        password=os.environ.get("DB_PASSWORD", ""),
+        database=os.environ.get("DB_NAME", "restaurante"),
+        port=int(os.environ.get("DB_PORT", "3306")),
     )
+    if os.environ.get("DB_SSL", "").lower() in ("1", "true", "si"):
+        datos["ssl_disabled"] = False  # Aiven exige conexion segura
+    return mysql.connector.connect(**datos)
 
 
 # ==================== Utilidades ====================
@@ -205,6 +212,79 @@ def actualizar_estado_reserva(id_reserva, nuevo_estado):
         conn.close()
 
 
+# ==================== Estadisticas (dashboard admin) ====================
+
+def _filtro_sql(desde, hasta, estado=None):
+    """WHERE (sobre reservas r + estados e) y sus parametros para rango de fechas y estado."""
+    where = "r.fecha BETWEEN %s AND %s"
+    params = [desde, hasta]
+    if estado == "Rechazada":
+        where += " AND e.nombre LIKE 'Rechazada%%'"
+    elif estado:
+        where += " AND e.nombre = %s"
+        params.append(estado)
+    return where, params
+
+
+def reservas_filtradas(desde, hasta, estado=None):
+    """Listado de reservas (con mesas) del rango, ordenado por fecha y hora."""
+    where, params = _filtro_sql(desde, hasta, estado)
+    return _consultar(where + " ORDER BY r.fecha, r.hora_inicio", params)
+
+
+def estadisticas(desde, hasta, estado=None):
+    """Datos del dashboard para reservas con fecha entre desde y hasta.
+
+    estado: None (todos), 'Pendiente', 'Aceptada' o 'Rechazada' (incluye las rechazadas por conflicto).
+    """
+    where, params = _filtro_sql(desde, hasta, estado)
+    desde_reservas = "FROM reservas r JOIN estados e ON e.id_estado = r.id_estado WHERE " + where
+
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+
+        cur.execute(f"SELECT e.nombre, COUNT(*) {desde_reservas} GROUP BY e.nombre", params)
+        por_estado = {"Pendiente": 0, "Aceptada": 0, "Rechazada": 0}
+        for nombre, n in cur.fetchall():
+            por_estado["Rechazada" if nombre.startswith("Rechazada") else nombre] += n
+
+        cur.execute(f"SELECT WEEKDAY(r.fecha), COUNT(*) {desde_reservas} GROUP BY 1", params)
+        por_dia = [0] * 7
+        for dia, n in cur.fetchall():
+            por_dia[dia] = n
+
+        cur.execute(f"SELECT HOUR(r.hora_inicio), COUNT(*) {desde_reservas} GROUP BY 1", params)
+        por_hora = {h: n for h, n in cur.fetchall()}
+
+        cur.execute(
+            "SELECT rm.numero_mesa, COUNT(*) FROM reserva_mesas rm "
+            "JOIN reservas r ON r.id = rm.id_reserva "
+            "JOIN estados e ON e.id_estado = r.id_estado "
+            f"WHERE {where} GROUP BY rm.numero_mesa", params)
+        mesas = {m: n for m, n in cur.fetchall()}
+
+        cur.execute(f"SELECT COUNT(*), AVG(r.personas) {desde_reservas}", params)
+        total, promedio = cur.fetchone()
+
+        cur.execute(
+            "SELECT COUNT(*) FROM reservas r JOIN estados e ON e.id_estado = r.id_estado "
+            "WHERE e.nombre = 'Pendiente'")
+        pendientes_global = cur.fetchone()[0]
+    finally:
+        conn.close()
+
+    return {
+        "total": total or 0,
+        "promedio_personas": float(promedio or 0),
+        "por_estado": por_estado,
+        "por_dia": por_dia,
+        "por_hora": por_hora,
+        "mesas": mesas,
+        "pendientes_global": pendientes_global,
+    }
+
+
 # ==================== Vendedores / usuarios ====================
 
 def obtener_contrasena_vendedor(nombre):
@@ -278,6 +358,30 @@ def actualizar_password_vendedor(nombre, nueva_contrasena):
         cursor.execute(
             "UPDATE vendedores SET contrasena = %s WHERE nombre = %s",
             (nueva_contrasena, nombre)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def actualizar_vendedor(nombre_actual, nuevo_nombre=None, contrasena=None):
+    """Cambia nombre y/o contraseña en un solo UPDATE. Lo que venga en None no se toca."""
+    campos, valores = [], []
+    if nuevo_nombre:
+        campos.append("nombre = %s")
+        valores.append(nuevo_nombre)
+    if contrasena:
+        campos.append("contrasena = %s")
+        valores.append(contrasena)
+    if not campos:
+        return
+    valores.append(nombre_actual)
+    conn = conectar()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"UPDATE vendedores SET {', '.join(campos)} WHERE nombre = %s",
+            valores
         )
         conn.commit()
     finally:
