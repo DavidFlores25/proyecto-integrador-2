@@ -2,4 +2,6 @@ PySide6
 mysql-connector-python
 reportlab
 openpyxl
- 
+flask
+mysql-connector-python
+gunicorn
