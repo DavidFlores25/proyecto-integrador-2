@@ -407,3 +407,9 @@ def obtener_rol_vendedor(nombre):
     except mysql.connector.Error:
         return "Vendedor"
     return fila["rol"] if fila else "Vendedor"
+            fila = cursor.fetchone()
+        finally:
+            conn.close()
+    except mysql.connector.Error:
+        return "Vendedor"
+    return fila["rol"] if fila else "Vendedor"
