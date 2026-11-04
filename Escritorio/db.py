@@ -7,17 +7,32 @@ import os
 import mysql.connector
 
 
+def _leer(nombre, defecto):
+    """Busca el dato en: variable de entorno -> config.py -> valor por defecto."""
+    valor = os.environ.get(nombre)
+    if valor:
+        return valor
+    try:
+        import config
+        valor = getattr(config, nombre, None)
+        if valor not in (None, ""):
+            return valor
+    except ImportError:
+        pass
+    return defecto
+
+
 def conectar():
-    # En la nube se leen de variables de entorno; en tu PC usa los valores de siempre.
+    host = str(_leer("DB_HOST", "localhost"))
     datos = dict(
-        host=os.environ.get("DB_HOST", "localhost"),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", ""),
-        database=os.environ.get("DB_NAME", "restaurante"),
-        port=int(os.environ.get("DB_PORT", "3306")),
+        host=host,
+        user=str(_leer("DB_USER", "root")),
+        password=str(_leer("DB_PASSWORD", "")),
+        database=str(_leer("DB_NAME", "restaurante")),
+        port=int(_leer("DB_PORT", 3306)),
     )
-    if os.environ.get("DB_SSL", "").lower() in ("1", "true", "si"):
-        datos["ssl_disabled"] = False  # Aiven exige conexion segura
+    if host != "localhost":
+        datos["ssl_disabled"] = False  # la base en la nube exige conexion segura
     return mysql.connector.connect(**datos)
 
 
