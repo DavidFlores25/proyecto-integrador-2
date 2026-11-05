@@ -4,16 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurante</title>
-<link rel="icon" type="imgen/png" href="Assets/icons/1-favicon.png">
-    <link rel="stylesheet" href="css/style.css">
-    <script src="javascript/1.js" defer></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="Assets/icons/1-favicon.png">
+
+    <!-- Fuente PT Serif -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Iconos y mapa -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="css/reserva.css">
-<script src="javascript/reserva.js" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Tus estilos y scripts -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/reserva.css">
+    <script src="javascript/1.js" defer></script>
+    <script src="javascript/reserva.js" defer></script>
 </head>
 <body>
 
@@ -21,34 +28,25 @@
 <nav>
 <img src="Assets/icons/1-favicon.png" alt="Logo restaurante">
 <div>
-  <a href="#inicio">Inicio</a>
-  <a href="#menu">Menu</a>
+  <a href="#hero">Inicio</a>
+  <a href="#menu">Menú</a>
   <a href="#reservar">Reservar</a>
-  <a href="#ubicacion">Ubicacion</a>
+  <a href="#ubicacion">Ubicación</a>
 
 </div>
 </nav>
- <div class="carrusel" id="inicio">
-  <div class="track">
- 
-    <div class="slide">
-      <img src="img/8.webp" alt="">
-      <div class="texto"><h2>Lionel Messi</h2><p>8 Balones de oro.</p></div>
+
+<section class="hero" id="hero">
+  <div class="hero-content">
+    <span class="hero-tag">Cocina nicaragüense</span>
+    <h1>El sabor <span>Nica</span> en la casa</h1>
+    <p>Recetas de siempre, ingredientes frescos y el sazón que te hace sentir en familia.</p>
+    <div class="hero-btns">
+      <a href="#reservar" class="btn btn-primary">Reservar mesa</a>
+      <a href="#menu" class="btn btn-outline">Ver menú</a>
     </div>
- 
-    <div class="slide">
-      <img src="img/5 cr7.webp" alt="cr7">
-      <div class="texto"><h2>Cristiano Ronaldo</h2><p>5 Balones de oro.</p></div>
-    </div>
- 
-    <div class="slide">
-      <img src="img/v2 Marco van Basten.png" alt="Marco van Basten">
-      <div class="texto"><h2>Marco van Basten</h2><p>3 Balones de oro.</p></div>
-    </div>
- 
   </div>
-  <div class="dots"></div>
-</div>
+</section>
 
 <p class="frase-dishoom ">
   <span class="oscuro reveal">Donde cada plato cuenta</span>
@@ -274,7 +272,7 @@
       </form>
 
 <aside class="rs-cardd">
-  <h3 style="color:yellow">Cómo funciona</h3>
+  <h3>Cómo funciona</h3>
   <ol class="rs-pasos">
     <li><strong>Elige fecha y horario</strong>Revisa qué mesas están libres y escoge las tuyas.</li>
     <li><strong>Envía tu solicitud</strong>Llega a nuestro equipo como pendiente.</li>
@@ -283,8 +281,8 @@
   <p class="rs-datos">
     <i class="fa-solid fa-clock"></i>Martes a domingo, 8:00 AM - 11:00 PM<br>
     <i class="fa-solid fa-ban"></i>Lunes cerrado<br>
-    <i class="fa-solid fa-square-phone"></i>8959 2743<br>
-    <i class="fa-solid fa-envelope"></i>Don bigote@gmail.com
+    <i class="fa-solid fa-square-phone"></i><a href="tel:+50589592743">8959 2743</a><br>
+    <i class="fa-solid fa-envelope"></i><a href="mailto:donbigote@gmail.com">donbigote@gmail.com</a>
   </p>
 </aside>
     </div>
@@ -293,14 +291,13 @@
 
 <main class="contactos" id="ubicacion">
 <section class="contac">
-<h1 style="  color: #3E2415; text-shadow: 3px 3px 0 #E8D5B5,6px 6px 0 rgba(139, 90, 43, 0.4);letter-spacing: 1px;"
-                  >Nuestra ubicacion</h1>
-<p>La ubicacion centrica de buena zona del municipio, teniando localidades turistica cerca facilita el acceso tanto a los vecinos como a los visitantes, y te permite disfrutar 
+<h2>Nuestra ubicación</h2>
+<p>La ubicación céntrica, en una buena zona del municipio y con sitios turísticos cerca, facilita el acceso tanto a los vecinos como a los visitantes, y te permite disfrutar 
 de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p><br>
 
 <h4><i class="fa-solid fa-location-dot"></i>De las oficinas de claro el viejo, una calle al sur y 50 mts al oeste.</h4><br>
-<h4><i class="fa-solid fa-square-phone"></i>8959 2743</h4><br>
-<h4><i class="fa-solid fa-envelope"></i>Don bigote@gmail.com</h4>
+<h4><i class="fa-solid fa-square-phone"></i><a href="tel:+50589592743">8959 2743</a></h4><br>
+<h4><i class="fa-solid fa-envelope"></i><a href="mailto:donbigote@gmail.com">donbigote@gmail.com</a></h4>
 </section>
 
 
@@ -312,7 +309,7 @@ de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p>
 <div class="sobre">
 
 <div class="so">
-<h2 style="color:#FFFDF9">Sobre nostros</h2>
+<h2>Sobre nosotros</h2>
 <p>En Don Bigote nos enorgullece servir una gran variedad de platillos típicos nicaragüenses recién hechos, jugosas carnes asadas, tajadas, gallopinto y especialidades de la casa. Combinamos los ingredientes más frescos y la auténtica sazón tradicional preparada todos los días en nuestra cocina, <br> ubicados en pleno centro de El Viejo, Chinandega.</p>
 </div>
 
@@ -320,7 +317,7 @@ de un ambiente tranquilo sin alejarte de todo lo que la ciudad ofrece.<br>  </p>
 
 
 <div class="soo">
-<h2 style="color: #FFFDF9"> horarios abiertos</h2>
+<h2>Horarios</h2>
 <p>
   Lunes cerrado <br>
   Martes: 8:00 AM - 11:00 PM<br>

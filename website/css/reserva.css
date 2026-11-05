@@ -123,3 +123,20 @@
   .rs-mesas{ grid-template-columns:repeat(3, 1fr); }
   .rs-card{ padding:34px 18px 24px; }
 }
+
+/* ===== AJUSTES ===== */
+.rs-cardd > h3 {
+  position: absolute; top: -20px; left: 22px;
+  background: var(--rs-amarillo); color: var(--rs-tinta);
+  padding: 9px 16px; border-radius: 8px;
+  font-size: 1rem; text-transform: uppercase; letter-spacing: 1.5px;
+  transform: rotate(-2deg);
+}
+.rs-datos a { color: inherit; }
+.rs-campo input, .rs-campo select { width: 100%; min-width: 0; }
+
+@media (max-width: 560px) {
+  .rs-card, .rs-cardd { padding: 34px 16px 22px; box-shadow: 5px 5px 0 var(--rs-tinta); }
+  .rs-acciones .rs-btn { width: 100%; }
+  .rs-head p { font-size: .95rem; }
+}
